@@ -6,24 +6,28 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    private const CACHE_PREFIX = 'admin_api_token:';
+
     /**
      * POST /api/admin/login
-     * Autentikasi admin via email & password, mengembalikan Sanctum token.
+     * Autentikasi admin via username dan password, mengembalikan bearer token internal.
      */
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'username' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        if (!Auth::attempt($credentials)) {
+        if (! Auth::attempt($credentials)) {
             throw ValidationException::withMessages([
-                'email' => ['Email atau password salah.'],
+                'username' => ['Username atau password salah.'],
             ]);
         }
 
@@ -38,12 +42,14 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $token = $user->createToken('admin-panel')->plainTextToken;
+        $token = Str::random(64);
+        Cache::put(self::CACHE_PREFIX . $token, $user->id, now()->addHours(8));
 
         return response()->json([
             'success' => true,
             'data' => [
                 'token' => $token,
+                'token_type' => 'Bearer',
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -58,7 +64,11 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->attributes->get('admin_token', $request->bearerToken());
+
+        if (is_string($token) && $token !== '') {
+            Cache::forget(self::CACHE_PREFIX . $token);
+        }
 
         return response()->json(['success' => true, 'message' => 'Berhasil logout.']);
     }

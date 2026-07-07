@@ -28,7 +28,7 @@ Route::post('/submit', [SubmissionController::class, 'store'])
 Route::post('/admin/login', [AuthController::class, 'login'])
     ->middleware('throttle:10,1');
 
-Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
+Route::middleware('auth.admin')->prefix('admin')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/submissions', [AdminSubmissionController::class, 'index']);

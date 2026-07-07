@@ -18,4 +18,10 @@ class DatabaseSeeder extends Seeder
         // Run user seeder (creates an admin user)
         $this->call(UserSeeder::class);
     }
+
+    public function run(): void
+    {
+        $this->call(
+        [UserSeeder::class,]
+    });
 }
