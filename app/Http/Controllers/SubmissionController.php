@@ -37,6 +37,7 @@ class SubmissionController extends Controller
             'position_id' => $validated['position_id'] ?? null,
             'institution' => $validated['institution'],
             'study_program' => $validated['study_program'],
+            'research_title' => $validated['research_title'] ?? null,
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
             'member_1' => $validated['member_1'],

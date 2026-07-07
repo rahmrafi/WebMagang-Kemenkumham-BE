@@ -15,6 +15,7 @@ class Submission extends Model
         'position_id',
         'institution',
         'study_program',
+        'research_title',
         'start_date',
         'end_date',
         'member_1',
