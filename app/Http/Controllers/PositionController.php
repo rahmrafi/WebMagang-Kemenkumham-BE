@@ -15,7 +15,7 @@ class PositionController extends Controller
     public function index(): JsonResponse
     {
         $positions = InternshipPosition::active()
-            ->select('id', 'position_name')
+            ->select('id', 'position_name', 'status')
             ->orderBy('position_name')
             ->get();
 

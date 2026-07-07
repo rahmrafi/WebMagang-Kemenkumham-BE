@@ -13,7 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'verify.turnstile' => \App\Http\Middleware\VerifyTurnstile::class,
+            'verify.turnstile' => \App\Http\Middleware\VerifyTurnstyle::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
