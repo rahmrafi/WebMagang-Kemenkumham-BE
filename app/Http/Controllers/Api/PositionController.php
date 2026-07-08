@@ -12,7 +12,7 @@ class PositionController extends Controller
     {
         $positions = InternshipPosition::active()
             ->select('id', 'position_name')
-            ->orderBy('position_name')
+            ->orderByRaw("CASE WHEN position_name LIKE 'Lain%' THEN 1 ELSE 0 END ASC, position_name ASC")
             ->get();
 
         return response()->json([
