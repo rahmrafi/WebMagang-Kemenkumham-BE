@@ -69,9 +69,17 @@ class SubmissionController extends Controller
             'Berkas tidak ditemukan.'
         );
 
+        $member1Parts = explode('|', $submission->member_1);
+        $namaKetua = $member1Parts[0] ?? 'ketua';
+        
+        $namaKetuaClean = \Illuminate\Support\Str::slug($namaKetua, '_') ?: 'ketua';
+        $kampusClean = \Illuminate\Support\Str::slug($submission->institution, '_') ?: 'kampus';
+        
+        $downloadName = "permohonan_{$namaKetuaClean}_{$kampusClean}.zip";
+
         return Storage::disk('submissions')->download(
             $submission->document_path,
-            "permohonan-{$submission->id}.zip"
+            $downloadName
         );
     }
 }
