@@ -59,7 +59,7 @@ class SubmissionController extends Controller
         }
 
         $fileName = Str::uuid() . '.zip';
-        $path = $request->file('document')->storeAs('submissions', $fileName, 'submissions');
+        $path = $request->file('document')->storeAs('', $fileName, 'submissions');
 
         $submission = Submission::create([
             'type' => $validated['type'],

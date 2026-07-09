@@ -7,6 +7,7 @@ use App\Models\Submission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -86,23 +87,39 @@ class SubmissionController extends Controller
      */
     public function download(Submission $submission): StreamedResponse
     {
-        abort_unless(
-            Storage::disk('submissions')->exists($submission->document_path),
-            404,
-            'Berkas tidak ditemukan.'
-        );
+        $documentPath = $this->resolveDocumentPath($submission);
 
         $member1Parts = explode('|', $submission->member_1);
         $namaKetua = $member1Parts[0] ?? 'ketua';
         
-        $namaKetuaClean = \Illuminate\Support\Str::slug($namaKetua, '_') ?: 'ketua';
-        $kampusClean = \Illuminate\Support\Str::slug($submission->institution, '_') ?: 'kampus';
+        $namaKetuaClean = Str::slug($namaKetua, '_') ?: 'ketua';
+        $kampusClean = Str::slug($submission->institution, '_') ?: 'kampus';
         
         $downloadName = "permohonan_{$namaKetuaClean}_{$kampusClean}.zip";
 
         return Storage::disk('submissions')->download(
-            $submission->document_path,
+            $documentPath,
             $downloadName
         );
+    }
+
+    private function resolveDocumentPath(Submission $submission): string
+    {
+        $storedPath = trim((string) $submission->document_path);
+        $fileName = basename($storedPath);
+
+        $candidates = array_unique(array_filter([
+            $storedPath,
+            $fileName,
+            "submissions/{$fileName}",
+        ]));
+
+        foreach ($candidates as $path) {
+            if (Storage::disk('submissions')->exists($path)) {
+                return $path;
+            }
+        }
+
+        abort(404, 'Berkas ZIP tidak ditemukan di storage server.');
     }
 }
