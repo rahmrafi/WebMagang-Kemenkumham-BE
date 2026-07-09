@@ -29,9 +29,7 @@ class SubmissionController extends Controller
             $query->where('status', $request->input('status'));
         }
 
-        $submissions = $query->latest()->paginate(
-            $request->integer('per_page', 15)
-        );
+        $submissions = $query->latest()->get();
 
         return response()->json([
             'success' => true,

@@ -19,9 +19,7 @@ class SubmissionController extends Controller
         if ($validated['type'] === 'penelitian') {
             $validated['period_id'] = null;
         } else {
-            $period = InternshipPeriod::with(['submissions' => function ($query) {
-                $query->whereIn('status', ['pending', 'approved']);
-            }])->find($validated['period_id']);
+            $period = InternshipPeriod::find($validated['period_id']);
 
             if (!$period || $period->status !== 'active') {
                 throw ValidationException::withMessages([
@@ -29,13 +27,7 @@ class SubmissionController extends Controller
                 ]);
             }
 
-            $usedQuota = 0;
-            foreach ($period->submissions as $sub) {
-                $usedQuota += 1;
-                for ($i = 2; $i <= 10; $i++) {
-                    if ($sub->{"member_$i"}) $usedQuota += 1;
-                }
-            }
+            $usedQuota = $period->used_quota;
 
             $requestedQuota = 1;
             for ($i = 2; $i <= 10; $i++) {
