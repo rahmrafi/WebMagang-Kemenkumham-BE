@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/periods', [PeriodController::class, 'index']);
+Route::get('/check-status', [SubmissionController::class, 'checkStatus']);
 
 Route::post('/submit', [SubmissionController::class, 'store'])
     // Rate limit: maksimal 5 submit per menit per IP

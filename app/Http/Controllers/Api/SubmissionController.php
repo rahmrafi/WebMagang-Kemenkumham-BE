@@ -95,4 +95,40 @@ class SubmissionController extends Controller
             ],
         ], 201);
     }
+
+    public function checkStatus(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $email = $request->query('email');
+        $nim = $request->query('nim');
+
+        if (!$email || !$nim) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email dan NIM wajib diisi.',
+            ], 400);
+        }
+
+        $submission = Submission::where(function ($query) use ($email, $nim) {
+            for ($i = 1; $i <= 10; $i++) {
+                $query->orWhere(function ($q) use ($i, $email, $nim) {
+                    $q->where("member_$i", 'LIKE', '%' . $email . '%')
+                      ->where("member_$i", 'LIKE', '%' . $nim . '%');
+                });
+            }
+        })->latest()->first();
+
+        if (!$submission) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pendaftaran tidak ditemukan.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'status' => $submission->status,
+            ]
+        ]);
+    }
 }
