@@ -18,8 +18,8 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
-            'username' => ['required', 'string'],
-            'password' => ['required', 'string'],
+            'username' => ['required', 'string', 'min:3', 'max:50', 'regex:/^[a-zA-Z0-9_]+$/'],
+            'password' => ['required', 'string', 'min:8', 'max:100'],
         ]);
 
         if (! Auth::attempt($credentials)) {
@@ -32,20 +32,21 @@ class AuthController extends Controller
 
         // Pastikan hanya user dengan role admin yang boleh login ke panel ini
         if (!$user->is_admin) {
-            Auth::logout();
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Akun ini tidak memiliki akses admin.',
             ], 403);
         }
 
-        $token = $user->createToken('admin-token')->plainTextToken;
+        $request->session()->regenerate();
 
         return response()->json([
             'success' => true,
             'data' => [
-                'token' => $token,
-                'token_type' => 'Bearer',
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -60,7 +61,9 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json(['success' => true, 'message' => 'Berhasil logout.']);
     }

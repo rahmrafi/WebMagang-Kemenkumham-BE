@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'verify.turnstile' => \App\Http\Middleware\VerifyTurnstile::class,
             'auth.admin' => \App\Http\Middleware\AuthenticateAdminToken::class,
         ]);
+        
+        $middleware->api(prepend: [
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
