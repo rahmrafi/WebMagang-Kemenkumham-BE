@@ -35,6 +35,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class])->prefix('admin')->
 
     Route::get('/submissions', [AdminSubmissionController::class, 'index']);
     Route::patch('/submissions/{submission}/status', [AdminSubmissionController::class, 'updateStatus']);
+    Route::patch('/submissions/{submission}/dates', [AdminSubmissionController::class, 'updateDates']);
     Route::get('/submissions/{submission}/download', [AdminSubmissionController::class, 'download']);
 
     Route::get('/periods', [AdminPeriodController::class, 'index']);

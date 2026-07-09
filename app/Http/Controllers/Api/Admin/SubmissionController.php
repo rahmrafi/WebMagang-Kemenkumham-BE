@@ -18,7 +18,7 @@ class SubmissionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Submission::query()->with('position:id,position_name');
+        $query = Submission::query()->with('period:id,start_date,end_date');
 
         if ($request->filled('type')) {
             $query->where('type', $request->input('type'));
@@ -53,6 +53,29 @@ class SubmissionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Status permohonan berhasil diperbarui.',
+            'data' => $submission,
+        ]);
+    }
+
+    /**
+     * PATCH /api/admin/submissions/{id}/dates
+     * Mengubah tanggal magang/penelitian untuk pendaftar spesifik (custom).
+     */
+    public function updateDates(Request $request, Submission $submission): JsonResponse
+    {
+        $validated = $request->validate([
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+        ]);
+
+        $submission->update([
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tanggal kegiatan berhasil diperbarui.',
             'data' => $submission,
         ]);
     }
