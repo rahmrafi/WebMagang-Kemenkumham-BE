@@ -43,7 +43,7 @@ class StoreSubmissionRequest extends FormRequest
             'member_9' => ['prohibited_if:type,magang', 'nullable', 'string', 'max:100'],
             'member_10' => ['prohibited_if:type,magang', 'nullable', 'string', 'max:100'],
             'letter_number' => ['required', 'string', 'max:100'],
-            'phone_number' => ['required', 'string', 'max:20'],
+            'phone_number' => ['required', 'string', 'regex:/^\+?[1-9]\d{7,14}$/'],
             'document' => ['required', 'file', 'mimes:zip', 'max:10240'],
         ];
     }
