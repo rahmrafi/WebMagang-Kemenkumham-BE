@@ -14,11 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'verify.turnstile' => \App\Http\Middleware\VerifyTurnstile::class,
-            'auth.admin' => \App\Http\Middleware\AuthenticateAdminToken::class,
-        ]);
-        
-        $middleware->api(prepend: [
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            'auth.admin'       => \App\Http\Middleware\AuthenticateAdminToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

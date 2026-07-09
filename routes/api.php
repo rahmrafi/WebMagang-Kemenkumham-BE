@@ -32,6 +32,7 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 
 Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
 
     Route::get('/submissions', [AdminSubmissionController::class, 'index']);
     Route::patch('/submissions/{submission}/status', [AdminSubmissionController::class, 'updateStatus']);
