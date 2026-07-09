@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AuthController;
-use App\Http\Controllers\Api\Admin\PositionController as AdminPositionController;
+use App\Http\Controllers\Api\Admin\PeriodController as AdminPeriodController;
 use App\Http\Controllers\Api\Admin\SubmissionController as AdminSubmissionController;
-use App\Http\Controllers\Api\PositionController;
+use App\Http\Controllers\Api\PeriodController;
 use App\Http\Controllers\Api\SubmissionController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/positions', [PositionController::class, 'index']);
+Route::get('/periods', [PeriodController::class, 'index']);
 
 Route::post('/submit', [SubmissionController::class, 'store'])
     // Rate limit: maksimal 5 submit per menit per IP
@@ -37,8 +37,8 @@ Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class])->prefix('admin')->
     Route::patch('/submissions/{submission}/status', [AdminSubmissionController::class, 'updateStatus']);
     Route::get('/submissions/{submission}/download', [AdminSubmissionController::class, 'download']);
 
-    Route::get('/positions', [AdminPositionController::class, 'index']);
-    Route::post('/positions', [AdminPositionController::class, 'store']);
-    Route::patch('/positions/{position}', [AdminPositionController::class, 'update']);
-    Route::delete('/positions/{position}', [AdminPositionController::class, 'destroy']);
+    Route::get('/periods', [AdminPeriodController::class, 'index']);
+    Route::post('/periods', [AdminPeriodController::class, 'store']);
+    Route::patch('/periods/{period}', [AdminPeriodController::class, 'update']);
+    Route::delete('/periods/{period}', [AdminPeriodController::class, 'destroy']);
 });

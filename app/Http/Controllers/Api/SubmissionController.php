@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSubmissionRequest;
 use App\Models\Submission;
+use App\Models\InternshipPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class SubmissionController extends Controller
 {
@@ -15,7 +17,38 @@ class SubmissionController extends Controller
         $validated = $request->validated();
 
         if ($validated['type'] === 'penelitian') {
-            $validated['position_id'] = null;
+            $validated['period_id'] = null;
+        } else {
+            $period = InternshipPeriod::with(['submissions' => function ($query) {
+                $query->whereIn('status', ['pending', 'approved']);
+            }])->find($validated['period_id']);
+
+            if (!$period || $period->status !== 'active') {
+                throw ValidationException::withMessages([
+                    'period_id' => ['Periode magang tidak valid atau sudah tidak aktif.'],
+                ]);
+            }
+
+            $usedQuota = 0;
+            foreach ($period->submissions as $sub) {
+                $usedQuota += 1;
+                for ($i = 2; $i <= 10; $i++) {
+                    if ($sub->{"member_$i"}) $usedQuota += 1;
+                }
+            }
+
+            $requestedQuota = 1;
+            for ($i = 2; $i <= 10; $i++) {
+                if (isset($validated["member_$i"]) && $validated["member_$i"]) {
+                    $requestedQuota += 1;
+                }
+            }
+
+            if (($usedQuota + $requestedQuota) > $period->quota) {
+                throw ValidationException::withMessages([
+                    'period_id' => ['Maaf, kuota untuk periode ini tidak mencukupi untuk jumlah pendaftar (' . $requestedQuota . ' orang). Sisa kuota: ' . max(0, $period->quota - $usedQuota)],
+                ]);
+            }
         }
 
         if (!$request->hasFile('document')) {
@@ -30,7 +63,7 @@ class SubmissionController extends Controller
 
         $submission = Submission::create([
             'type' => $validated['type'],
-            'position_id' => $validated['position_id'] ?? null,
+            'period_id' => $validated['period_id'] ?? null,
             'institution' => $validated['institution'],
             'study_program' => $validated['study_program'],
             'research_title' => $validated['research_title'] ?? null,

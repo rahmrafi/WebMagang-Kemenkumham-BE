@@ -17,6 +17,6 @@ class DatabaseSeeder extends Seeder
     {
         // Run all seeder (creates an data by seeder)
         $this->call(UserSeeder::class);
-        $this->call(PosisiMagangSeeder::class);
+        $this->call(PeriodeMagangSeeder::class);
     }
 }

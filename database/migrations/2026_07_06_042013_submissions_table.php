@@ -11,9 +11,9 @@ return new class extends Migration
         Schema::create('submissions', function (Blueprint $table) {
             $table->id();
             $table->enum('type', ['magang', 'penelitian']);
-            $table->foreignId('position_id')
+            $table->foreignId('period_id')
                 ->nullable()
-                ->constrained('internship_positions')
+                ->constrained('internship_periods')
                 ->nullOnDelete();
             $table->string('institution', 150);
             $table->string('study_program', 100);

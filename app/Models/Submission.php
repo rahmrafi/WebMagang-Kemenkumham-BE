@@ -12,7 +12,7 @@ class Submission extends Model
 
     protected $fillable = [
         'type',
-        'position_id',
+        'period_id',
         'institution',
         'study_program',
         'research_title',
@@ -39,8 +39,8 @@ class Submission extends Model
         'end_date' => 'date',
     ];
 
-    public function position(): BelongsTo
+    public function period(): BelongsTo
     {
-        return $this->belongsTo(InternshipPosition::class, 'position_id');
+        return $this->belongsTo(InternshipPeriod::class, 'period_id');
     }
 }

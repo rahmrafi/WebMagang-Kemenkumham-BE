@@ -16,11 +16,11 @@ class StoreSubmissionRequest extends FormRequest
     {
         return [
             'type' => ['required', Rule::in(['magang', 'penelitian'])],
-            'position_id' => [
+            'period_id' => [
                 Rule::requiredIf(fn () => $this->input('type') === 'magang'),
                 'nullable',
                 'integer',
-                'exists:internship_positions,id',
+                'exists:internship_periods,id',
             ],
             'institution' => ['required', 'string', 'max:150'],
             'study_program' => ['required', 'string', 'max:100'],
