@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Submission;
+use App\Models\SubmissionMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -19,7 +21,17 @@ class SubmissionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Submission::query()->with('period:id,start_date,end_date');
+        $query = Submission::query()
+            ->with('period:id,start_date,end_date');
+
+        $canTrackUnreadMessages = $this->canTrackUnreadMessages();
+        if ($canTrackUnreadMessages) {
+            $query->withCount([
+                'messages as unread_admin_messages_count' => fn ($query) => $query
+                    ->where('sender_type', 'applicant')
+                    ->whereNull('admin_read_at'),
+            ]);
+        }
 
         if ($request->filled('type')) {
             $query->where('type', $request->input('type'));
@@ -30,6 +42,10 @@ class SubmissionController extends Controller
         }
 
         $submissions = $query->latest()->get();
+
+        if (!$canTrackUnreadMessages) {
+            $submissions->each(fn (Submission $submission) => $submission->setAttribute('unread_admin_messages_count', 0));
+        }
 
         return response()->json([
             'success' => true,
@@ -46,6 +62,13 @@ class SubmissionController extends Controller
         $validated = $request->validate([
             'status' => ['required', Rule::in(['approved', 'rejected'])],
         ]);
+
+        if ($validated['status'] === 'approved' && !$submission->permit_file_path) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File izin belum diunggah. Silakan upload surat izin magang/penelitian terlebih dahulu sebelum menerima peserta.',
+            ], 422);
+        }
 
         $submission->update(['status' => $validated['status']]);
 
@@ -87,6 +110,10 @@ class SubmissionController extends Controller
     {
         $documentPath = $this->resolveDocumentPath($submission);
 
+        if (!$submission->document_downloaded_at) {
+            $submission->forceFill(['document_downloaded_at' => now()])->save();
+        }
+
         $member1Parts = explode('|', $submission->member_1);
         $namaKetua = $member1Parts[0] ?? 'ketua';
         
@@ -99,6 +126,105 @@ class SubmissionController extends Controller
             $documentPath,
             $downloadName
         );
+    }
+
+    public function uploadPermit(Request $request, Submission $submission): JsonResponse
+    {
+        $validated = $request->validate([
+            'permit_file' => ['required', 'file', 'mimes:pdf,docx', 'max:10240'],
+            'replace' => ['nullable', 'boolean'],
+        ]);
+
+        if ($submission->permit_file_path && !$request->boolean('replace')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File izin sudah tersedia. Upload ulang akan mengganti file sebelumnya.',
+                'requires_confirmation' => true,
+            ], 409);
+        }
+
+        if ($submission->permit_file_path && Storage::disk('permits')->exists($submission->permit_file_path)) {
+            Storage::disk('permits')->delete($submission->permit_file_path);
+        }
+
+        $file = $validated['permit_file'];
+        $extension = $file->getClientOriginalExtension();
+        $path = $file->storeAs('', Str::uuid() . '.' . $extension, 'permits');
+
+        $submission->update([
+            'permit_file_path' => $path,
+            'permit_file_name' => $file->getClientOriginalName(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'File izin berhasil diunggah.',
+            'data' => $submission->fresh(),
+        ]);
+    }
+
+    public function startDiscussion(Submission $submission): JsonResponse
+    {
+        if (!$submission->document_downloaded_at) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forum diskusi belum aktif. Silakan unduh dan review berkas pendukung terlebih dahulu sebelum memulai diskusi dengan pendaftar.',
+            ], 422);
+        }
+
+        if (!$submission->discussion_started_at) {
+            $submission->forceFill(['discussion_started_at' => now()])->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Forum diskusi berhasil diaktifkan.',
+            'data' => $submission->fresh(),
+        ]);
+    }
+
+    public function messages(Submission $submission): JsonResponse
+    {
+        if ($this->canTrackUnreadMessages()) {
+            $submission->messages()
+                ->where('sender_type', 'applicant')
+                ->whereNull('admin_read_at')
+                ->update(['admin_read_at' => now()]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $submission->messages()
+                ->oldest()
+                ->get(['id', 'sender_type', 'sender_name', 'message', 'created_at']),
+        ]);
+    }
+
+    public function sendMessage(Request $request, Submission $submission): JsonResponse
+    {
+        if (!$submission->discussion_started_at) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forum diskusi belum aktif untuk pendaftaran ini.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $message = SubmissionMessage::create([
+            'submission_id' => $submission->id,
+            'sender_type' => 'admin',
+            'sender_name' => 'Admin Kementerian Hukum',
+            'message' => $validated['message'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pesan berhasil dikirim.',
+            'data' => $message,
+        ], 201);
     }
 
     private function resolveDocumentPath(Submission $submission): string
@@ -119,5 +245,11 @@ class SubmissionController extends Controller
         }
 
         abort(404, 'Berkas ZIP tidak ditemukan di storage server.');
+    }
+
+    private function canTrackUnreadMessages(): bool
+    {
+        return Schema::hasTable('submission_messages')
+            && Schema::hasColumn('submission_messages', 'admin_read_at');
     }
 }

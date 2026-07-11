@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/periods', [PeriodController::class, 'index']);
 Route::get('/check-status', [SubmissionController::class, 'checkStatus']);
+Route::get('/submissions/{submission}/messages', [SubmissionController::class, 'messages']);
+Route::post('/submissions/{submission}/messages', [SubmissionController::class, 'sendMessage']);
+Route::get('/submissions/{submission}/permit/download', [SubmissionController::class, 'downloadPermit']);
 
 Route::post('/submit', [SubmissionController::class, 'store'])
     // Rate limit: maksimal 5 submit per menit per IP
@@ -39,6 +42,10 @@ Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class])->prefix('admin')->
     Route::patch('/submissions/{submission}/status', [AdminSubmissionController::class, 'updateStatus']);
     Route::patch('/submissions/{submission}/dates', [AdminSubmissionController::class, 'updateDates']);
     Route::get('/submissions/{submission}/download', [AdminSubmissionController::class, 'download']);
+    Route::post('/submissions/{submission}/permit', [AdminSubmissionController::class, 'uploadPermit']);
+    Route::post('/submissions/{submission}/discussion/start', [AdminSubmissionController::class, 'startDiscussion']);
+    Route::get('/submissions/{submission}/messages', [AdminSubmissionController::class, 'messages']);
+    Route::post('/submissions/{submission}/messages', [AdminSubmissionController::class, 'sendMessage']);
 
     Route::get('/periods', [AdminPeriodController::class, 'index']);
     Route::post('/periods', [AdminPeriodController::class, 'store']);

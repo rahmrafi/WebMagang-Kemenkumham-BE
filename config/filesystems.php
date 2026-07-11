@@ -72,6 +72,14 @@ return [
             'throw' => false,
             'report' => false,
         ],
+
+        'permits' => [
+            'driver' => 'local',
+            'root' => storage_path('app/permits'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
  
     ],
  

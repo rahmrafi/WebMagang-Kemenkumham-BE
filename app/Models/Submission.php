@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Submission extends Model
 {
@@ -32,15 +33,26 @@ class Submission extends Model
         'document_path',
         'phone_number',
         'status',
+        'document_downloaded_at',
+        'discussion_started_at',
+        'permit_file_path',
+        'permit_file_name',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'document_downloaded_at' => 'datetime',
+        'discussion_started_at' => 'datetime',
     ];
 
     public function period(): BelongsTo
     {
         return $this->belongsTo(InternshipPeriod::class, 'period_id');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(SubmissionMessage::class);
     }
 }
