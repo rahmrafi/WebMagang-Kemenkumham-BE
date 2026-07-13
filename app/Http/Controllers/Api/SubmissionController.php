@@ -145,6 +145,9 @@ class SubmissionController extends Controller
             'success' => true,
             'data' => $submission->messages()
                 ->oldest()
+                ->when($request->filled('since') && is_numeric($request->query('since')), function ($query) use ($request) {
+                    $query->where('id', '>', (int) $request->query('since'));
+                })
                 ->get(['id', 'sender_type', 'sender_name', 'message', 'created_at']),
         ]);
     }
