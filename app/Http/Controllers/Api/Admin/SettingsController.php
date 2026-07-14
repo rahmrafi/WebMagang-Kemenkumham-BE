@@ -27,7 +27,6 @@ class SettingsController extends Controller
     {
         $data = $request->validate([
             'pejabat_name' => 'required|string|max:150',
-            'pejabat_position' => 'required|string|max:200',
         ]);
 
         foreach ($data as $key => $value) {
