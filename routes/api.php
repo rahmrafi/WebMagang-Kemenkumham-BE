@@ -53,4 +53,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class])->prefix('admin')->
     Route::post('/periods', [AdminPeriodController::class, 'store']);
     Route::patch('/periods/{period}', [AdminPeriodController::class, 'update']);
     Route::delete('/periods/{period}', [AdminPeriodController::class, 'destroy']);
+
+    Route::get('/settings', [App\Http\Controllers\Api\Admin\SettingsController::class, 'index']);
+    Route::put('/settings', [App\Http\Controllers\Api\Admin\SettingsController::class, 'update']);
 });
