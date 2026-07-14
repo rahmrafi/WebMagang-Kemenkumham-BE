@@ -303,8 +303,8 @@ class DocumentController extends Controller
         $tbl .= '</w:tblBorders>';
         $tbl .= '</w:tblPr>';
         $tbl .= '<w:tblGrid>';
-        $tbl .= '<w:gridCol w:w="1700"/>'; // kolom label: ~3cm
-        $tbl .= '<w:gridCol w:w="3800"/>'; // kolom nilai: ~7cm
+        $tbl .= '<w:gridCol w:w="2400"/>'; // kolom label: lebar ditambah agar "Nomor Identitas" tidak wrap
+        $tbl .= '<w:gridCol w:w="3100"/>'; // kolom nilai
         $tbl .= '</w:tblGrid>';
 
         foreach ($members as $idx => $member) {
@@ -350,8 +350,8 @@ class DocumentController extends Controller
             . '</w:tc>';
 
         return '<w:tr>'
-            . $cell($col1, 1700)
-            . $cell($col2, 3800)
+            . $cell($col1, 2400)
+            . $cell($col2, 3100)
             . '</w:tr>';
     }
 
