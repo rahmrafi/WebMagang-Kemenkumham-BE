@@ -114,9 +114,8 @@ class DocumentController extends Controller
         $periode  = $tglMulai . ' – ' . $tglAkhir; // en-dash (–)
 
         // Fetch settings for pejabat
-        $settings = Setting::whereIn('key', ['pejabat_name', 'pejabat_position'])->pluck('value', 'key');
+        $settings = Setting::where('key', 'pejabat_name')->pluck('value', 'key');
         $pejabatName = $settings['pejabat_name'] ?? 'R. Prasetyo Wibowo';
-        $pejabatPosition = $settings['pejabat_position'] ?? 'Kepala Bagian Tata Usaha dan Umum';
 
         return [
             'tgl_surat'            => Carbon::now()->locale('id')->isoFormat('D MMMM YYYY'),
@@ -129,7 +128,6 @@ class DocumentController extends Controller
             'members_table_xml'    => $membersTableXml,  // raw XML, injected langsung
             'periode_magang'       => $periode,
             'nama_pejabat'         => $pejabatName,
-            'jabatan_pejabat'      => $pejabatPosition,
         ];
     }
 
@@ -155,11 +153,16 @@ class DocumentController extends Controller
         // [2] Nama Ketua + Dkk — template: "a.n.[.....2]" → tambah spasi di depan
         $xml = str_replace('[.....2]', ' ' . $e($data['nama_ketua_dkk']), $xml);
 
-        // [3] Jabatan pejabat pengirim surat (Yth. Kepala Bagian ...)
-        $xml = str_replace('[.....3]', $e($data['jabatan_pejabat']), $xml);
+        // [3] Jabatan pejabat pengirim surat — tampilkan sebagai placeholder manual
+        //     Muncul di baris "Yth." dan di badan surat "sehubungan dengan surat"
+        $xml = str_replace('[.....3]', '[Nama Pejabat Pengirim Surat]', $xml);
 
-        // Dinamis Jabatan
-        $xml = str_replace('[jabatan_pejabat]', $e($data['jabatan_pejabat']), $xml);
+        // Bagian Atas Tanda Tangan (Jabatan Pejabat)
+        // Hardcode sesuai permintaan user:
+        $xml = str_replace('[jabatan_pejabat]', 'Kepala Bagian Tata Usaha dan Umum', $xml);
+        
+        // Perbaiki spasi ganda pada "a.n.  Kepala Kantor Wilayah" menjadi spasi tunggal agar sejajar
+        $xml = str_replace('a.n.  Kepala Kantor Wilayah,', 'a.n. Kepala Kantor Wilayah,', $xml);
 
         // Dinamis Nama Pejabat
         $xml = str_replace('[nama_pejabat]', $e($data['nama_pejabat']), $xml);
