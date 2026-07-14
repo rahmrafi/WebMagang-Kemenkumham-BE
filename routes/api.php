@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AuthController;
+use App\Http\Controllers\Api\Admin\DocumentController;
 use App\Http\Controllers\Api\Admin\PeriodController as AdminPeriodController;
 use App\Http\Controllers\Api\Admin\SubmissionController as AdminSubmissionController;
 use App\Http\Controllers\Api\PeriodController;
@@ -42,6 +43,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class])->prefix('admin')->
     Route::patch('/submissions/{submission}/status', [AdminSubmissionController::class, 'updateStatus']);
     Route::patch('/submissions/{submission}/dates', [AdminSubmissionController::class, 'updateDates']);
     Route::get('/submissions/{submission}/download', [AdminSubmissionController::class, 'download']);
+    Route::get('/submissions/{submission}/generate-template', [DocumentController::class, 'generateTemplate']);
     Route::post('/submissions/{submission}/permit', [AdminSubmissionController::class, 'uploadPermit']);
     Route::post('/submissions/{submission}/discussion/start', [AdminSubmissionController::class, 'startDiscussion']);
     Route::get('/submissions/{submission}/messages', [AdminSubmissionController::class, 'messages']);

@@ -16,7 +16,9 @@ class Submission extends Model
         'type',
         'period_id',
         'institution',
+        'campus_city',
         'study_program',
+        'education_level',
         'research_title',
         'start_date',
         'end_date',
@@ -31,6 +33,7 @@ class Submission extends Model
         'member_9',
         'member_10',
         'letter_number',
+        'letter_date',
         'document_path',
         'phone_number',
         'status',
@@ -43,6 +46,7 @@ class Submission extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'letter_date' => 'date',
         'document_downloaded_at' => 'datetime',
         'discussion_started_at' => 'datetime',
     ];

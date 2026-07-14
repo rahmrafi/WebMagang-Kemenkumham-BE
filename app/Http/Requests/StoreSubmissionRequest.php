@@ -23,7 +23,9 @@ class StoreSubmissionRequest extends FormRequest
                 'exists:internship_periods,id',
             ],
             'institution' => ['required', 'string', 'max:150'],
+            'campus_city' => ['required', 'string', 'max:100'],
             'study_program' => ['required', 'string', 'max:100'],
+            'education_level' => ['required', 'string', Rule::in(['SMA', 'SMK', 'D3', 'D4', 'S1'])],
             'research_title' => [
                 Rule::requiredIf(fn () => $this->input('type') === 'penelitian'),
                 'nullable',
@@ -43,6 +45,7 @@ class StoreSubmissionRequest extends FormRequest
             'member_9' => ['prohibited_if:type,magang', 'nullable', 'string', 'max:100'],
             'member_10' => ['prohibited_if:type,magang', 'nullable', 'string', 'max:100'],
             'letter_number' => ['required', 'string', 'max:100'],
+            'letter_date'   => ['required', 'date'],
             'phone_number' => ['required', 'string', 'regex:/^\+?[1-9]\d{7,14}$/'],
             'document' => ['required', 'file', 'mimes:zip', 'max:10240'],
         ];
