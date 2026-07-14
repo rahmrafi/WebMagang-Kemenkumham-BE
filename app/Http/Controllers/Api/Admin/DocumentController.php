@@ -13,6 +13,7 @@ use ZipArchive;
 class DocumentController extends Controller
 {
     private const TEMPLATE_MAGANG = 'template/magang/Format_Surat_Izin_Magang.docx';
+    private const TEMPLATE_PENELITIAN = 'template/peneltian/Format_Surat_Izin_peneltian.docx';
 
     // Jenjang yang diklasifikasikan sebagai "mahasiswa"
     private const JENJANG_MAHASISWA = ['D2', 'D3', 'D4', 'S1', 'S2', 'S3'];
@@ -23,7 +24,8 @@ class DocumentController extends Controller
      */
     public function generateTemplate(Submission $submission): BinaryFileResponse
     {
-        $templatePath = storage_path(self::TEMPLATE_MAGANG);
+        $isPenelitian = $submission->type === 'penelitian';
+        $templatePath = storage_path($isPenelitian ? self::TEMPLATE_PENELITIAN : self::TEMPLATE_MAGANG);
 
         if (!file_exists($templatePath)) {
             abort(404, 'File template surat tidak ditemukan di server.');
@@ -53,7 +55,8 @@ class DocumentController extends Controller
 
         // 3. Tentukan nama file output
         $namaKetua = $this->parseNama($submission->member_1);
-        $fileName  = 'Surat_Izin_Magang_'
+        $jenisSurat = $isPenelitian ? 'Penelitian' : 'Magang';
+        $fileName  = 'Surat_Izin_' . $jenisSurat . '_'
             . Str::slug($namaKetua, '_')
             . '_' . now()->format('Y-m-d')
             . '.docx';
@@ -82,8 +85,12 @@ class DocumentController extends Controller
 
         $edLevel = $submission->education_level ?? '';
 
-        // Label NIM vs NISN berdasarkan jenjang pendidikan
-        $labelNim = in_array($edLevel, ['SMA', 'SMK']) ? 'NISN' : 'NIM';
+        // Label NIM vs NISN berdasarkan jenjang pendidikan atau tipe submission
+        if ($submission->type === 'penelitian') {
+            $labelNim = 'Nomor Identitas';
+        } else {
+            $labelNim = in_array($edLevel, ['SMA', 'SMK']) ? 'NISN' : 'NIM';
+        }
 
         // [2] Nama ketua (ucwords) + ", Dkk." jika lebih dari 1 anggota
         $namaKetua    = $members[0]['nama'] ?? '';
@@ -128,6 +135,8 @@ class DocumentController extends Controller
             'members_table_xml'    => $membersTableXml,  // raw XML, injected langsung
             'periode_magang'       => $periode,
             'nama_pejabat'         => $pejabatName,
+            'type'                 => $submission->type,
+            'research_title'       => $submission->research_title,
         ];
     }
 
@@ -140,6 +149,14 @@ class DocumentController extends Controller
      *   → pakai preg_replace dengan flag /s untuk span multi-baris XML.
      */
     private function fillPlaceholders(string $xml, array $data): string
+    {
+        if ($data['type'] === 'penelitian') {
+            return $this->fillPenelitianPlaceholders($xml, $data);
+        }
+        return $this->fillMagangPlaceholders($xml, $data);
+    }
+
+    private function fillMagangPlaceholders(string $xml, array $data): string
     {
         // Helper: escape nilai untuk konteks XML
         $e = static fn(string $v): string =>
@@ -220,6 +237,48 @@ class DocumentController extends Controller
             '<w:t xml:space="preserve"> dengan</w:t>',
             $xml
         );
+
+        return $xml;
+    }
+
+    private function fillPenelitianPlaceholders(string $xml, array $data): string
+    {
+        $e = static fn(string $v): string => htmlspecialchars($v, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+
+        // 1. [....1] -> Tanggal Pembuatan
+        $xml = str_replace('[....1]', $e($data['tgl_surat']), $xml);
+
+        // 2. [......2] -> Nama Ketua
+        $xml = str_replace('[......2]', $e($data['nama_ketua_dkk']), $xml);
+
+        // 3. [......3] and [.....3] -> [Nama Pejabat Pengirim Surat]
+        $xml = str_replace(['[......3]', '[.....3]'], '[Nama Pejabat Pengirim Surat]', $xml);
+
+        // 4. [.......4] and [.....4] -> Instansi
+        $xml = str_replace(['[.......4]', '[.....4]'], $e($data['nama_instansi']), $xml);
+
+        // 5. [......5] and [.....5] -> Kota
+        $xml = preg_replace('/\[\.{5,6}5\]/', $e($data['kota_pengirim']), $xml);
+
+        // 6. [....6] -> Nomer Surat
+        $xml = str_replace('[....6]', $e($data['nomor_surat']), $xml);
+
+        // 7. [....7] -> Tanggal surat
+        $xml = str_replace('[....7]', $e($data['tgl_surat_permohonan']), $xml);
+
+        // 8. [......8] -> Table members
+        $xml = preg_replace(
+            '/<w:p\b[^>]*>(?:(?!<\/w:p>).)*\[\.+8\](?:(?!<\/w:p>).)*<\/w:p>/s',
+            $data['members_table_xml'],
+            $xml
+        );
+
+        // 9. [.....9] -> Judul
+        $xml = str_replace('[.....9]', $e($data['research_title'] ?? ''), $xml);
+
+        // Signature adjustments
+        $xml = str_replace('Kepala Bagian Umum dan Tata Usaha', 'Kepala Bagian Tata Usaha dan Umum', $xml);
+        $xml = str_replace('Meirina Saeksi', $e($data['nama_pejabat']), $xml);
 
         return $xml;
     }
