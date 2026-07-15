@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\Admin\PeriodController as AdminPeriodController;
 use App\Http\Controllers\Api\Admin\SubmissionController as AdminSubmissionController;
 use App\Http\Controllers\Api\PeriodController;
 use App\Http\Controllers\Api\SubmissionController;
+use App\Http\Middleware\EnsureDesktopOrTablet;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -31,11 +33,9 @@ Route::post('/submit', [SubmissionController::class, 'store'])
 */
 
 Route::post('/admin/login', [AuthController::class, 'login'])
-    ->middleware('throttle:10,1');
+    ->middleware(['throttle:10,1', EnsureDesktopOrTablet::class]);
 
-use App\Http\Middleware\EnsureUserIsAdmin;
-
-Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class, EnsureDesktopOrTablet::class])->prefix('admin')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 

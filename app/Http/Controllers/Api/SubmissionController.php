@@ -9,6 +9,7 @@ use App\Models\SubmissionMessage;
 use App\Models\InternshipPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -20,33 +21,8 @@ class SubmissionController extends Controller
     {
         $validated = $request->validated();
 
-        if ($validated['type'] === 'penelitian') {
-            $validated['period_id'] = null;
-        } else {
-            $period = InternshipPeriod::find($validated['period_id']);
-
-            if (!$period || $period->status !== 'active') {
-                throw ValidationException::withMessages([
-                    'period_id' => ['Periode magang tidak valid atau sudah tidak aktif.'],
-                ]);
-            }
-
-            $usedQuota = $period->used_quota;
-
-            $requestedQuota = 1;
-            for ($i = 2; $i <= 10; $i++) {
-                if (isset($validated["member_$i"]) && $validated["member_$i"]) {
-                    $requestedQuota += 1;
-                }
-            }
-
-            if (($usedQuota + $requestedQuota) > $period->quota) {
-                throw ValidationException::withMessages([
-                    'period_id' => ['Maaf, kuota untuk periode ini tidak mencukupi untuk jumlah pendaftar (' . $requestedQuota . ' orang). Sisa kuota: ' . max(0, $period->quota - $usedQuota)],
-                ]);
-            }
-        }
-
+        // Upload file SEBELUM transaksi — operasi I/O tidak boleh di dalam transaksi DB
+        // agar koneksi DB tidak tertahan terlalu lama saat upload berlangsung.
         if (!$request->hasFile('document')) {
             return response()->json([
                 'success' => false,
@@ -55,41 +31,125 @@ class SubmissionController extends Controller
         }
 
         $fileName = Str::uuid() . '.zip';
-        $path = $request->file('document')->storeAs('', $fileName, 'submissions');
+        $uploadedPath = $request->file('document')->storeAs('', $fileName, 'submissions');
 
-        $submission = Submission::create([
-            'type'            => $validated['type'],
-            'period_id'       => $validated['period_id'] ?? null,
-            'institution'     => $validated['institution'],
-            'campus_city'     => $validated['campus_city'],
-            'study_program'   => $validated['study_program'],
-            'education_level' => $validated['education_level'],
-            'research_title'  => $validated['research_title'] ?? null,
-            'start_date'      => $validated['start_date'],
-            'end_date'        => $validated['end_date'],
-            'member_1'        => $validated['member_1'],
-            'member_2'        => $validated['member_2'] ?? null,
-            'member_3'        => $validated['member_3'] ?? null,
-            'member_4'        => $validated['member_4'] ?? null,
-            'member_5'        => $validated['member_5'] ?? null,
-            'member_6'        => $validated['member_6'] ?? null,
-            'member_7'        => $validated['member_7'] ?? null,
-            'member_8'        => $validated['member_8'] ?? null,
-            'member_9'        => $validated['member_9'] ?? null,
-            'member_10'       => $validated['member_10'] ?? null,
-            'letter_number'   => $validated['letter_number'],
-            'letter_date'     => $validated['letter_date'],
-            'document_path'   => $path,
-            'phone_number'    => $validated['phone_number'],
-            'status'          => 'pending',
-        ]);
+        try {
+            $submission = DB::transaction(function () use ($validated, $uploadedPath) {
+                if ($validated['type'] === 'penelitian') {
+                    $validated['period_id'] = null;
+                } else {
+                    // lockForUpdate(): kunci baris periode di DB selama transaksi ini berjalan.
+                    // Jika ada request lain yang coba lock periode yang sama secara bersamaan,
+                    // mereka akan MENUNGGU sampai transaksi ini COMMIT atau ROLLBACK.
+                    // Ini mencegah dua user lolos cek kuota di saat yang sama (race condition).
+                    $period = InternshipPeriod::lockForUpdate()->find($validated['period_id']);
+
+                    if (!$period || $period->status !== 'active') {
+                        throw ValidationException::withMessages([
+                            'period_id' => ['Periode magang tidak valid atau sudah tidak aktif.'],
+                        ]);
+                    }
+
+                    // Hitung kuota yang sudah terpakai — dibaca SETELAH lock dipegang,
+                    // sehingga nilainya selalu fresh dan tidak stale dari cache/read sebelumnya.
+                    $usedQuota = $period->used_quota;
+
+                    $requestedQuota = 1;
+                    for ($i = 2; $i <= 10; $i++) {
+                        if (!empty($validated["member_$i"])) {
+                            $requestedQuota += 1;
+                        }
+                    }
+
+                    if (($usedQuota + $requestedQuota) > $period->quota) {
+                        throw ValidationException::withMessages([
+                            'period_id' => [
+                                'Maaf, kuota untuk periode ini tidak mencukupi untuk jumlah pendaftar '
+                                . '(' . $requestedQuota . ' orang). Sisa kuota: '
+                                . max(0, $period->quota - $usedQuota),
+                            ],
+                        ]);
+                    }
+                }
+
+                // ── Cek Duplikasi Pendaftaran ──────────────────────────────────────────────
+                // member_1 disimpan dalam format "nama|nim|email".
+                // Kita ekstrak NIM (index 1) dan email (index 2) milik ketua,
+                // lalu cari apakah kombinasi NIM+email tersebut sudah ada di submission aktif
+                // (status pending atau approved) di kolom member manapun (1–10).
+                // Submission yang sudah rejected diizinkan daftar ulang.
+                $member1Parts = explode('|', (string) ($validated['member_1'] ?? ''));
+                $ketuaNim     = trim($member1Parts[1] ?? '');
+                $ketuaEmail   = trim($member1Parts[2] ?? '');
+
+                if ($ketuaNim !== '' && $ketuaEmail !== '') {
+                    $alreadyRegistered = Submission::whereIn('status', ['pending', 'approved'])
+                        ->where(function ($query) use ($ketuaNim, $ketuaEmail) {
+                            for ($i = 1; $i <= 10; $i++) {
+                                $query->orWhere(function ($q) use ($i, $ketuaNim, $ketuaEmail) {
+                                    // Cari exact substring NIM dan email dalam kolom member_X
+                                    $q->where("member_$i", 'LIKE', '%' . $ketuaNim . '%')
+                                      ->where("member_$i", 'LIKE', '%' . $ketuaEmail . '%');
+                                });
+                            }
+                        })
+                        ->exists();
+
+                    if ($alreadyRegistered) {
+                        throw ValidationException::withMessages([
+                            'member_1' => [
+                                'Anda sudah memiliki pendaftaran aktif yang sedang diproses. '
+                                . 'Silakan cek status pendaftaran Anda di halaman Status Pendaftaran. '
+                                . 'Pendaftaran baru hanya bisa dilakukan setelah pendaftaran sebelumnya ditolak.',
+                            ],
+                        ]);
+                    }
+                }
+                // ──────────────────────────────────────────────────────────────────────────
+
+                return Submission::create([
+                    'type'            => $validated['type'],
+                    'period_id'       => $validated['period_id'] ?? null,
+                    'institution'     => $validated['institution'],
+                    'campus_city'     => $validated['campus_city'],
+                    'study_program'   => $validated['study_program'],
+                    'education_level' => $validated['education_level'],
+                    'research_title'  => $validated['research_title'] ?? null,
+                    'start_date'      => $validated['start_date'],
+                    'end_date'        => $validated['end_date'],
+                    'member_1'        => $validated['member_1'],
+                    'member_2'        => $validated['member_2'] ?? null,
+                    'member_3'        => $validated['member_3'] ?? null,
+                    'member_4'        => $validated['member_4'] ?? null,
+                    'member_5'        => $validated['member_5'] ?? null,
+                    'member_6'        => $validated['member_6'] ?? null,
+                    'member_7'        => $validated['member_7'] ?? null,
+                    'member_8'        => $validated['member_8'] ?? null,
+                    'member_9'        => $validated['member_9'] ?? null,
+                    'member_10'       => $validated['member_10'] ?? null,
+                    'letter_number'   => $validated['letter_number'],
+                    'letter_date'     => $validated['letter_date'],
+                    'document_path'   => $uploadedPath,
+                    'phone_number'    => $validated['phone_number'],
+                    'status'          => 'pending',
+                ]);
+            });
+        } catch (ValidationException $e) {
+            // Kuota habis atau periode tidak valid — hapus file yang sudah ter-upload
+            Storage::disk('submissions')->delete($uploadedPath);
+            throw $e;
+        } catch (\Throwable $e) {
+            // Error tak terduga — hapus file agar tidak jadi orphan di storage
+            Storage::disk('submissions')->delete($uploadedPath);
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Permohonan berhasil dikirim.',
             'data' => [
-                'id' => $submission->id,
-                'type' => $submission->type,
+                'id'     => $submission->id,
+                'type'   => $submission->type,
                 'status' => $submission->status,
             ],
         ], 201);
