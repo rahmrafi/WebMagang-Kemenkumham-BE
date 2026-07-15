@@ -1,8 +1,8 @@
 
 # Website Magang Kemenkumham (Backend)
 Project Team-Based yang dikerjakan selama waktu magang di Kementrian Hukum wilayah Jawa Timur. Ini merupakan bagian backend untuk mengatur permintaaan (*request*) dari frontend, menjalankan logika bisnis (*business logic*), dan komunikasi antara database (*mysql*) untuk melakukan proses CRUD (**hanya dilakukan oleh admin**).
-## Features
 
+## Features
 - Authentication
 - Public submission flow
 - From validation
@@ -11,31 +11,33 @@ Project Team-Based yang dikerjakan selama waktu magang di Kementrian Hukum wilay
 - File storage & security
 - Bot protection & rate limiting
 - Model & schema migration
+
 ## Tech Stack
 **Laravel Framework**
 | Nama | Deskripsi |
 | :-------- | :------- |
-| dedoc/scramble | Automatic generation of API documentation for Laravel applications. |
-| fakerphp/faker | Faker is a PHP library that generates fake data for you. |
-| laravel/framework | The Laravel Framework |
-| laravel/pail | Easily delve into your Laravel application's log files directly from the command line. |
-| laravel/pint | An opinionated code formatter for PHP. |
-| laravel/sail | Docker files for running a basic Laravel application. |
-| laravel/sanctum | Laravel Sanctum provides a featherweight authentication system for SPAs and simple APIs. |
-| laravel/tinker | Powerful REPL for the Laravel framework. |
-| mockery/mockery | Mockery is a simple yet flexible PHP mock object framework. |
-| nunomaduro/collision | Cli error handling for console/command-line PHP applications. |
-| phpoffice/phpword | A pure PHP library for reading and writing word processing documents (OOXML, ODF, RTF, HTML, PDF) |
-| phpunit/phpunit | The PHP Unit Testing framework. |
+| dedoc/scramble | Pembuatan dokumentasi API secara otomatis untuk aplikasi Laravel. |
+| fakerphp/faker | Faker adalah pustaka PHP yang menghasilkan data palsu. |
+| laravel/framework | Kerangka Kerja Laravel |
+| laravel/pail | Telusuri berkas log aplikasi Laravel Anda dengan mudah langsung dari baris perintah. |
+| laravel/pint | Pembentuk kode yang memiliki pendekatan tegas untuk PHP. |
+| laravel/sail | Berkas Docker untuk menjalankan aplikasi Laravel dasar. |
+| laravel/sanctum | Laravel Sanctum menyediakan sistem otentikasi yang sangat ringan untuk SPA dan API sederhana. |
+| laravel/tinker | REPL yang kuat untuk kerangka kerja Laravel. |
+| mockery/mockery | Mockery adalah kerangka kerja objek tiruan PHP yang sederhana namun fleksibel. |
+| nunomaduro/collision | Penanganan kesalahan CLI untuk aplikasi PHP konsol/baris perintah. |
+| phpoffice/phpword | Pustaka PHP murni untuk membaca dan menulis dokumen pengolah kata (OOXML, ODF, RTF, HTML, PDF) |
+| phpunit/phpunit | Kerangka kerja Pengujian Unit PHP. |
 
 **Database**
 | Nama | Deskripsi |
 | :-------- | :------- |
 | MySQL/MariaDB | Untuk menjalannkan proses CRUD. |
+
 ## Installation
 Buka terminal lalu clone project dari repository
 ```bash
-git clone "" Backend
+git clone https://github.com/rahmrafi/WebMagang-Kemenkumham-BE.git Backend
 ```
 Masuk ke direktori backend
 ```bash
@@ -53,3 +55,6 @@ Jalankan server php
 ```bash
 php artisan serve
 ```
+
+## Get frontend part
+Antarmuka bisa mengunakan repository berikut ini [frontend-kemenkum.](https://github.com/amad-IO/frontend-kemenkum)
