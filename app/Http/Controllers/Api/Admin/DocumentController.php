@@ -39,7 +39,13 @@ class DocumentController extends Controller
         $tempPath = $tempDir . DIRECTORY_SEPARATOR . Str::uuid() . '.docx';
         copy($templatePath, $tempPath);
 
-        // 2. Buka file DOCX (ZIP), baca & modifikasi document.xml
+        // 2. Pastikan ekstensi ZipArchive tersedia di runtime.
+        if (!class_exists(ZipArchive::class)) {
+            @unlink($tempPath);
+            abort(500, 'PHP extension ZipArchive tidak terpasang atau belum diaktifkan. Aktifkan ekstensi php_zip di php.ini.');
+        }
+
+        // 3. Buka file DOCX (ZIP), baca & modifikasi document.xml
         $zip = new ZipArchive();
         if ($zip->open($tempPath) !== true) {
             @unlink($tempPath);
