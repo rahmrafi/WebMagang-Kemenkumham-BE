@@ -16,6 +16,25 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
+<<<<<<< HEAD
+        // Create an admin user
+        User::updateOrCreate([
+            'name' => 'Admin',
+            'username' => 'admin',
+            'email' => 'admin@email.com',
+            'password' => Hash::make('password@123'),
+            'is_admin' => true,
+        ]);
+
+        User::updateOrCreate([
+            'name' => 'Kemenkum',
+            'username' => 'kemenkum',
+            'email' => 'kemenkum@email.com',
+            'password' => Hash::make('password@123'),
+            'is_admin' => true,
+        ]);
+
+=======
         User::updateOrCreate(
             ['username' => 'admin'],
             [
@@ -25,15 +44,33 @@ class UserSeeder extends Seeder
                 'is_admin' => true,
             ]
         );
-
         User::updateOrCreate(
-            ['username' => 'kemenkum'],
+            ['username' => 'rafif_admin'],
             [
-                'name' => 'Kemenkum',
-                'email' => 'kemenkum@email.com',
-                'password' => Hash::make('password@123'),
+                'name' => 'Rafif Admin',
+                'email' => 'rafif@email.com',
+                'password' => Hash::make('rafif@123'),
                 'is_admin' => true,
             ]
         );
+        User::updateOrCreate(
+            ['username' => 'ahmad_admin'],
+            [
+                'name' => 'Ahmad Admin',
+                'email' => 'ahmad@email.com',
+                'password' => Hash::make('ahmad@123'),
+                'is_admin' => true,
+            ]
+        );
+        User::updateOrCreate(
+            ['username' => 'rafi_admin'],
+            [
+                'name' => 'Rafi Admin',
+                'email' => 'rafi@email.com',
+                'password' => Hash::make('rafi@123'),
+                'is_admin' => true,
+            ]
+        );
+>>>>>>> 4dcf113ef1d53d60c3049369317da056dab3e193
     }
 }
