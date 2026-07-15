@@ -107,14 +107,11 @@ class SubmissionController extends Controller
             ], 400);
         }
 
-        $submission = Submission::where(function ($query) use ($email, $nim) {
-            for ($i = 1; $i <= 10; $i++) {
-                $query->orWhere(function ($q) use ($i, $email, $nim) {
-                    $q->where("member_$i", 'LIKE', '%' . $email . '%')
-                      ->where("member_$i", 'LIKE', '%' . $nim . '%');
-                });
-            }
-        })->latest()->first();
+        // Hanya ketua kelompok / pendaftar individu (member_1) yang diizinkan mengakses
+        $submission = Submission::where('member_1', 'LIKE', '%' . $email . '%')
+            ->where('member_1', 'LIKE', '%' . $nim . '%')
+            ->latest()
+            ->first();
 
         if (!$submission) {
             return response()->json([
@@ -215,11 +212,10 @@ class SubmissionController extends Controller
 
     private function matchesApplicant(Submission $submission, string $email, string $nim): bool
     {
-        for ($i = 1; $i <= 10; $i++) {
-            $member = (string) $submission->getAttribute("member_$i");
-            if ($member && str_contains($member, $email) && str_contains($member, $nim)) {
-                return true;
-            }
+        $member1 = (string) $submission->getAttribute("member_1");
+        
+        if ($member1 && str_contains($member1, $email) && str_contains($member1, $nim)) {
+            return true;
         }
 
         return false;
