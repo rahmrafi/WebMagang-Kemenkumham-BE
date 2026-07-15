@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\Submission;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -12,6 +13,7 @@ use ZipArchive;
 class DocumentController extends Controller
 {
     private const TEMPLATE_MAGANG = 'template/magang/Format_Surat_Izin_Magang.docx';
+    private const TEMPLATE_PENELITIAN = 'template/peneltian/Format_Surat_Izin_peneltian.docx';
 
     // Jenjang yang diklasifikasikan sebagai "mahasiswa"
     private const JENJANG_MAHASISWA = ['D2', 'D3', 'D4', 'S1', 'S2', 'S3'];
@@ -22,7 +24,8 @@ class DocumentController extends Controller
      */
     public function generateTemplate(Submission $submission): BinaryFileResponse
     {
-        $templatePath = storage_path(self::TEMPLATE_MAGANG);
+        $isPenelitian = $submission->type === 'penelitian';
+        $templatePath = storage_path($isPenelitian ? self::TEMPLATE_PENELITIAN : self::TEMPLATE_MAGANG);
 
         if (!file_exists($templatePath)) {
             abort(404, 'File template surat tidak ditemukan di server.');
@@ -52,7 +55,8 @@ class DocumentController extends Controller
 
         // 3. Tentukan nama file output
         $namaKetua = $this->parseNama($submission->member_1);
-        $fileName  = 'Surat_Izin_Magang_'
+        $jenisSurat = $isPenelitian ? 'Penelitian' : 'Magang';
+        $fileName  = 'Surat_Izin_' . $jenisSurat . '_'
             . Str::slug($namaKetua, '_')
             . '_' . now()->format('Y-m-d')
             . '.docx';
@@ -81,8 +85,12 @@ class DocumentController extends Controller
 
         $edLevel = $submission->education_level ?? '';
 
-        // Label NIM vs NISN berdasarkan jenjang pendidikan
-        $labelNim = in_array($edLevel, ['SMA', 'SMK']) ? 'NISN' : 'NIM';
+        // Label NIM vs NISN berdasarkan jenjang pendidikan atau tipe submission
+        if ($submission->type === 'penelitian') {
+            $labelNim = 'Nomor Identitas';
+        } else {
+            $labelNim = in_array($edLevel, ['SMA', 'SMK']) ? 'NISN' : 'NIM';
+        }
 
         // [2] Nama ketua (ucwords) + ", Dkk." jika lebih dari 1 anggota
         $namaKetua    = $members[0]['nama'] ?? '';
@@ -91,13 +99,18 @@ class DocumentController extends Controller
             : $namaKetua;
 
         // [8] Format jenjang:
-        //   SMA/SMK → "siswa SMK Teknik Informatika"
-        //   D3/D4/S1/dll → "mahasiswa S1 Informatika"
-        //   ucwords diterapkan pada study_program (inputan bebas)
+        //   Mahasiswa (D2/D3/D4/S1/S2/S3) → "mahasiswa S1 Informatika"  (pakai study_program)
+        //   Siswa (SMA/SMK)               → "siswa SMK Muhammadiyah Sidoarjo" (pakai institution)
         $isMahasiswa    = in_array($edLevel, self::JENJANG_MAHASISWA);
         $prefix         = $isMahasiswa ? 'mahasiswa' : 'siswa';
-        $studyProgram   = $this->toTitleCase($submission->study_program ?? '');
-        $jenjangJurusan = trim($prefix . ' ' . $edLevel . ' ' . $studyProgram);
+        if ($isMahasiswa) {
+            $studyProgram   = $this->toTitleCase($submission->study_program ?? '');
+            $jenjangJurusan = trim($prefix . ' ' . $edLevel . ' ' . $studyProgram);
+        } else {
+            // SMA / SMK: tampilkan nama sekolah bukan program studi
+            $namaSekolah    = $this->toTitleCase($submission->institution ?? '');
+            $jenjangJurusan = trim($prefix . ' ' . $edLevel . ' ' . $namaSekolah);
+        }
 
         // [9] Pre-generate Word XML table untuk daftar anggota
         $membersTableXml = $this->buildMembersTableXml($members, $labelNim);
@@ -106,6 +119,10 @@ class DocumentController extends Controller
         $tglMulai = Carbon::parse($submission->start_date)->locale('id')->isoFormat('D MMMM');
         $tglAkhir = Carbon::parse($submission->end_date)->locale('id')->isoFormat('D MMMM YYYY');
         $periode  = $tglMulai . ' – ' . $tglAkhir; // en-dash (–)
+
+        // Fetch settings for pejabat
+        $settings = Setting::where('key', 'pejabat_name')->pluck('value', 'key');
+        $pejabatName = $settings['pejabat_name'] ?? 'R. Prasetyo Wibowo';
 
         return [
             'tgl_surat'            => Carbon::now()->locale('id')->isoFormat('D MMMM YYYY'),
@@ -117,6 +134,9 @@ class DocumentController extends Controller
             'jenjang_jurusan'      => $jenjangJurusan,
             'members_table_xml'    => $membersTableXml,  // raw XML, injected langsung
             'periode_magang'       => $periode,
+            'nama_pejabat'         => $pejabatName,
+            'type'                 => $submission->type,
+            'research_title'       => $submission->research_title,
         ];
     }
 
@@ -129,6 +149,14 @@ class DocumentController extends Controller
      *   → pakai preg_replace dengan flag /s untuk span multi-baris XML.
      */
     private function fillPlaceholders(string $xml, array $data): string
+    {
+        if ($data['type'] === 'penelitian') {
+            return $this->fillPenelitianPlaceholders($xml, $data);
+        }
+        return $this->fillMagangPlaceholders($xml, $data);
+    }
+
+    private function fillMagangPlaceholders(string $xml, array $data): string
     {
         // Helper: escape nilai untuk konteks XML
         $e = static fn(string $v): string =>
@@ -143,8 +171,18 @@ class DocumentController extends Controller
         $xml = str_replace('[.....2]', ' ' . $e($data['nama_ketua_dkk']), $xml);
 
         // [3] Jabatan pejabat pengirim surat — tampilkan sebagai placeholder manual
-        //     Muncul 2x: di baris "Yth." dan di badan surat "sehubungan dengan surat"
+        //     Muncul di baris "Yth." dan di badan surat "sehubungan dengan surat"
         $xml = str_replace('[.....3]', '[Nama Pejabat Pengirim Surat]', $xml);
+
+        // Bagian Atas Tanda Tangan (Jabatan Pejabat)
+        // Hardcode sesuai permintaan user:
+        $xml = str_replace('[jabatan_pejabat]', 'Kepala Bagian Tata Usaha dan Umum', $xml);
+        
+        // Perbaiki spasi ganda pada "a.n.  Kepala Kantor Wilayah" menjadi spasi tunggal agar sejajar
+        $xml = str_replace('a.n.  Kepala Kantor Wilayah,', 'a.n. Kepala Kantor Wilayah,', $xml);
+
+        // Dinamis Nama Pejabat
+        $xml = str_replace('[nama_pejabat]', $e($data['nama_pejabat']), $xml);
 
         // [5] Kota pengirim surat — tambah prefix "di" sesuai format surat resmi
         $xml = str_replace('[....5]', 'di ' . $e($data['kota_pengirim']), $xml);
@@ -203,6 +241,48 @@ class DocumentController extends Controller
         return $xml;
     }
 
+    private function fillPenelitianPlaceholders(string $xml, array $data): string
+    {
+        $e = static fn(string $v): string => htmlspecialchars($v, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+
+        // 1. [....1] -> Tanggal Pembuatan
+        $xml = str_replace('[....1]', $e($data['tgl_surat']), $xml);
+
+        // 2. [......2] -> Nama Ketua
+        $xml = str_replace('[......2]', $e($data['nama_ketua_dkk']), $xml);
+
+        // 3. [......3] and [.....3] -> [Nama Pejabat Pengirim Surat]
+        $xml = str_replace(['[......3]', '[.....3]'], '[Nama Pejabat Pengirim Surat]', $xml);
+
+        // 4. [.......4] and [.....4] -> Instansi
+        $xml = str_replace(['[.......4]', '[.....4]'], $e($data['nama_instansi']), $xml);
+
+        // 5. [......5] and [.....5] -> Kota
+        $xml = preg_replace('/\[\.{5,6}5\]/', $e($data['kota_pengirim']), $xml);
+
+        // 6. [....6] -> Nomer Surat
+        $xml = str_replace('[....6]', $e($data['nomor_surat']), $xml);
+
+        // 7. [....7] -> Tanggal surat
+        $xml = str_replace('[....7]', $e($data['tgl_surat_permohonan']), $xml);
+
+        // 8. [......8] -> Table members
+        $xml = preg_replace(
+            '/<w:p\b[^>]*>(?:(?!<\/w:p>).)*\[\.+8\](?:(?!<\/w:p>).)*<\/w:p>/s',
+            $data['members_table_xml'],
+            $xml
+        );
+
+        // 9. [.....9] -> Judul
+        $xml = str_replace('[.....9]', $e($data['research_title'] ?? ''), $xml);
+
+        // Signature adjustments
+        $xml = str_replace('Kepala Bagian Umum dan Tata Usaha', 'Kepala Bagian Tata Usaha dan Umum', $xml);
+        $xml = str_replace('Meirina Saeksi', $e($data['nama_pejabat']), $xml);
+
+        return $xml;
+    }
+
     /**
      * Generate Word XML untuk tabel daftar anggota (2 kolom berkotak).
      * Setiap anggota = 2 baris: baris Nama + baris NIM/NISN.
@@ -223,8 +303,8 @@ class DocumentController extends Controller
         $tbl .= '</w:tblBorders>';
         $tbl .= '</w:tblPr>';
         $tbl .= '<w:tblGrid>';
-        $tbl .= '<w:gridCol w:w="1700"/>'; // kolom label: ~3cm
-        $tbl .= '<w:gridCol w:w="3800"/>'; // kolom nilai: ~7cm
+        $tbl .= '<w:gridCol w:w="2400"/>'; // kolom label: lebar ditambah agar "Nomor Identitas" tidak wrap
+        $tbl .= '<w:gridCol w:w="3100"/>'; // kolom nilai
         $tbl .= '</w:tblGrid>';
 
         foreach ($members as $idx => $member) {
@@ -270,8 +350,8 @@ class DocumentController extends Controller
             . '</w:tc>';
 
         return '<w:tr>'
-            . $cell($col1, 1700)
-            . $cell($col2, 3800)
+            . $cell($col1, 2400)
+            . $cell($col2, 3100)
             . '</w:tr>';
     }
 
