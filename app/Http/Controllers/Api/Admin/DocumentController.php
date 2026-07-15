@@ -135,8 +135,29 @@ class DocumentController extends Controller
             $jenjangJurusan = trim($prefix . ' ' . $edLevel . ' ' . $studyProgram);
         } else {
             // SMA/SMK dan peserta umum: tampilkan nama institusi bukan program studi.
-            $namaSekolah    = $this->toTitleCase($submission->institution ?? '');
-            $jenjangJurusan = trim($prefix . ' ' . $edLevel . ' ' . $namaSekolah);
+            $namaSekolah = $this->toTitleCase($submission->institution ?? '');
+            
+            // Jika jenjang Umum/Profesional/Dosen, cukup tampilkan "peserta [Nama Instansi]"
+            if ($edLevel === 'Umum/Profesional/Dosen') {
+                $jenjangJurusan = trim($prefix . ' ' . $namaSekolah);
+            } 
+            // Hindari duplikasi jenjang jika sudah ditulis pengguna (contoh: "SMK Negeri 2")
+            elseif ($edLevel !== '' && stripos(trim($namaSekolah), $edLevel) === 0) {
+                $jenjangJurusan = trim($prefix . ' ' . $namaSekolah);
+            } else {
+                $jenjangJurusan = trim($prefix . ' ' . $edLevel . ' ' . $namaSekolah);
+            }
+            
+            // Tambahkan jurusan jika peserta non-mahasiswa mengisi kolom program studi
+            $studyProgram = trim($submission->study_program ?? '');
+            if ($studyProgram !== '') {
+                // Hindari duplikasi kata "jurusan" jika user sudah mengetiknya
+                if (stripos($studyProgram, 'jurusan') === 0) {
+                    $jenjangJurusan .= ' ' . $this->toTitleCase($studyProgram);
+                } else {
+                    $jenjangJurusan .= ' jurusan ' . $this->toTitleCase($studyProgram);
+                }
+            }
         }
 
         // [9] Pre-generate Word XML table untuk daftar anggota
@@ -343,7 +364,16 @@ class DocumentController extends Controller
      */
     private function toTitleCase(?string $value): string
     {
-        return ucwords(strtolower(trim($value ?? '')));
+        $val = ucwords(strtolower(trim($value ?? '')));
+        // Kembalikan akronim umum yang terlanjur menjadi huruf kecil
+        $val = preg_replace('/\bSmk\b/i', 'SMK', $val);
+        $val = preg_replace('/\bSma\b/i', 'SMA', $val);
+        $val = preg_replace('/\bSmp\b/i', 'SMP', $val);
+        $val = preg_replace('/\bSd\b/i', 'SD', $val);
+        $val = preg_replace('/\bPt\b/i', 'PT', $val);
+        $val = preg_replace('/\bCv\b/i', 'CV', $val);
+        
+        return $val;
     }
 
     /**
