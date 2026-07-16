@@ -1,4 +1,3 @@
-
 # Website Magang Kemenkumham (Backend)
 Project Team-Based yang dikerjakan selama waktu magang di Kementrian Hukum wilayah Jawa Timur. Ini merupakan bagian backend untuk mengatur permintaaan (*request*) dari frontend, menjalankan logika bisnis (*business logic*), dan komunikasi antara database (*mysql*) untuk melakukan proses CRUD (**hanya dilakukan oleh admin**).
 
@@ -19,7 +18,7 @@ Project Team-Based yang dikerjakan selama waktu magang di Kementrian Hukum wilay
 | dedoc/scramble | Pembuatan dokumentasi API secara otomatis untuk aplikasi Laravel. |
 | fakerphp/faker | Faker adalah pustaka PHP yang menghasilkan data palsu. |
 | laravel/framework | Kerangka Kerja Laravel |
-| laravel/pail | Telusuri berkas log aplikasi Laravel Anda dengan mudah langsung dari baris perintah. |
+| laravel/pail | Telusuri berkas log aplikasi Laravel dengan mudah langsung dari baris perintah. |
 | laravel/pint | Pembentuk kode yang memiliki pendekatan tegas untuk PHP. |
 | laravel/sail | Berkas Docker untuk menjalankan aplikasi Laravel dasar. |
 | laravel/sanctum | Laravel Sanctum menyediakan sistem otentikasi yang sangat ringan untuk SPA dan API sederhana. |
@@ -32,7 +31,7 @@ Project Team-Based yang dikerjakan selama waktu magang di Kementrian Hukum wilay
 **Database**
 | Nama | Deskripsi |
 | :-------- | :------- |
-| MySQL/MariaDB | Untuk menjalannkan proses CRUD. |
+| MySQL/MariaDB | Untuk menjalankan proses CRUD. |
 
 ## Installation
 Buka terminal lalu clone project dari repository
@@ -57,4 +56,4 @@ php artisan serve
 ```
 
 ## Get frontend part
-Antarmuka bisa mengunakan repository berikut ini [frontend-kemenkum.](https://github.com/amad-IO/frontend-kemenkum)
+Antarmuka untuk backend ini bisa mengunakan repository berikut [frontend-kemenkum.](https://github.com/amad-IO/frontend-kemenkum)
