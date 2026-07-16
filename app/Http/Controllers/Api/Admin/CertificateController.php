@@ -297,13 +297,23 @@ class CertificateController extends Controller
             $xMm = ($field['x'] / 100) * $pageW;
             $yMm = ($field['y'] / 100) * $pageH;
 
-            // Posisi editor menunjuk bagian atas line-box browser. TCPDF tidak
-            // mempunyai line-box yang sama, sehingga glyph tampak lebih tinggi.
-            // Kalibrasi offset berdasarkan ukuran font dan lebar preview saat
-            // konfigurasi disimpan, lalu konversikan px preview ke mm halaman.
+            // Konversi px preview ke satuan halaman (mm/pt)
             $previewWidth = max(200, (float) ($field['preview_width'] ?? 1024));
-            $browserLineOffsetPx = (($field['font_size'] ?? 12) / 2) + 5;
-            $yMm += ($browserLineOffsetPx / $previewWidth) * $pageW;
+            
+            // Lebar halaman PDF dalam point (pt) -> 1 mm = 2.83465 pt
+            $pageWPt = $pageW * 2.83465;
+
+            // Rasio font size di browser terhadap lebar gambar preview
+            $fontRatio = ($field['font_size'] ?? 12) / $previewWidth;
+            
+            // Ukuran font riil di PDF agar persis proporsinya dengan yang dilihat user
+            $fontSize = max(5, (int) round($fontRatio * $pageWPt));
+
+            // Browser menempatkan teks di dalam bounding box dengan padding/line-height
+            // yang sedikit berbeda dari TCPDF. Beri kalibrasi offset Y sebesar ~15% dari font size.
+            $yOffsetPt = $fontSize * 0.15;
+            $yOffsetMm = $yOffsetPt / 2.83465;
+            $yMm += $yOffsetMm;
 
             // Parse warna hex → RGB
             $color = ltrim($field['font_color'] ?? '#000000', '#');
@@ -323,9 +333,6 @@ class CertificateController extends Controller
             $fontFamily = $field['font_family'] ?? 'helvetica';
             $font = $fontMap[$fontFamily] ?? 'helvetica';
 
-            // Browser menampilkan ukuran dalam px, sedangkan TCPDF memakai pt.
-            // 1px = 0.75pt; tanpa konversi teks PDF menjadi 33% lebih besar.
-            $fontSize = max(5, (int) round(($field['font_size'] ?? 12) * 0.75));
             $fontStyle = '';
             if (($field['font_weight'] ?? 400) >= 600) $fontStyle .= 'B';
             if (($field['font_style'] ?? 'normal') === 'italic') $fontStyle .= 'I';
