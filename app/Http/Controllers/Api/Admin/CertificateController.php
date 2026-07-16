@@ -109,7 +109,7 @@ class CertificateController extends Controller
             'fields.*.font_color' => ['sometimes', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'fields.*.width' => ['sometimes', 'numeric', 'min:5', 'max:100'],
             'fields.*.text_align' => ['sometimes', 'in:left,center,right'],
-            'fields.*.font_family' => ['sometimes', 'in:helvetica,times,georgia,montserrat,playfair,dancing-script,great-vibes'],
+            'fields.*.font_family' => ['sometimes', 'in:helvetica,times,georgia,montserrat,poppins,playfair,dancing-script,great-vibes'],
             'fields.*.font_weight' => ['sometimes', 'integer', 'in:200,300,400,500,600,700,800'],
             'fields.*.font_style' => ['sometimes', 'in:normal,italic'],
             'fields.*.preview_text' => ['sometimes', 'nullable', 'string', 'max:255'],
