@@ -12,9 +12,19 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Exports\SubmissionsExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SubmissionController extends Controller
 {
+    /**
+     * GET /api/admin/submissions/export
+     * Export all submissions to Excel
+     */
+    public function export()
+    {
+        return Excel::download(new SubmissionsExport, 'Data_Pendaftar_Magang_Penelitian_' . date('Ymd_His') . '.xlsx');
+    }
     /**
      * GET /api/admin/submissions
      * Daftar semua permohonan dengan filter type & status.
