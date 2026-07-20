@@ -14,6 +14,8 @@ use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Exports\SubmissionsExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Events\SubmissionUpdated;
+use App\Events\MessageSent;
 
 class SubmissionController extends Controller
 {
@@ -103,6 +105,8 @@ class SubmissionController extends Controller
         }
 
         $submission->update(['status' => $validated['status']]);
+
+        broadcast(new SubmissionUpdated($submission->id));
 
         return response()->json([
             'success' => true,
@@ -206,6 +210,7 @@ class SubmissionController extends Controller
 
         if (!$submission->discussion_started_at) {
             $submission->forceFill(['discussion_started_at' => now()])->save();
+            broadcast(new SubmissionUpdated($submission->id));
         }
 
         return response()->json([
@@ -254,6 +259,8 @@ class SubmissionController extends Controller
             'sender_name' => 'Admin Kementerian Hukum',
             'message' => $validated['message'],
         ]);
+
+        broadcast(new MessageSent($submission->id, $message));
 
         return response()->json([
             'success' => true,
