@@ -44,8 +44,8 @@
                         <td rowspan="{{ $memberCount }}" style="vertical-align: middle; text-align: center;">{{ $index + 1 }}</td>
                         <td rowspan="{{ $memberCount }}" style="vertical-align: middle; text-align: center;">{{ ucwords(strtolower($submission->type)) }}</td>
                         <td rowspan="{{ $memberCount }}" style="vertical-align: middle; text-align: center;">
-                            @if($submission->period)
-                                {{ \Carbon\Carbon::parse($submission->period->start_date)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($submission->period->end_date)->format('d/m/Y') }}
+                            @if($submission->start_date && $submission->end_date)
+                                {{ \Carbon\Carbon::parse($submission->start_date)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($submission->end_date)->format('d/m/Y') }}
                             @else
                                 -
                             @endif
