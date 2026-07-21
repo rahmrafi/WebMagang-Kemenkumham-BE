@@ -20,7 +20,7 @@ class SubmissionsExport implements FromView, ShouldAutoSize, WithStyles
 
     public function view(): View
     {
-        $query = Submission::query();
+        $query = Submission::query()->with('period');
         if ($this->submissionId) {
             $query->where('id', $this->submissionId);
         } else {

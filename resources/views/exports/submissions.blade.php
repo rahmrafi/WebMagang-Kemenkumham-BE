@@ -3,6 +3,7 @@
         <tr>
             <th style="font-weight: bold; text-align: center; background-color: #d1d5db;">No</th>
             <th style="font-weight: bold; text-align: center; background-color: #d1d5db;">Tipe</th>
+            <th style="font-weight: bold; text-align: center; background-color: #d1d5db;">Periode</th>
             <th style="font-weight: bold; text-align: center; background-color: #d1d5db;">Institusi</th>
             <th style="font-weight: bold; text-align: center; background-color: #d1d5db;">Program Studi</th>
             <th style="font-weight: bold; text-align: center; background-color: #d1d5db;">Kategori</th>
@@ -42,6 +43,13 @@
                     @if($mIndex === 0)
                         <td rowspan="{{ $memberCount }}" style="vertical-align: middle; text-align: center;">{{ $index + 1 }}</td>
                         <td rowspan="{{ $memberCount }}" style="vertical-align: middle; text-align: center;">{{ ucwords(strtolower($submission->type)) }}</td>
+                        <td rowspan="{{ $memberCount }}" style="vertical-align: middle; text-align: center;">
+                            @if($submission->period)
+                                {{ \Carbon\Carbon::parse($submission->period->start_date)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($submission->period->end_date)->format('d/m/Y') }}
+                            @else
+                                -
+                            @endif
+                        </td>
                         <td rowspan="{{ $memberCount }}" style="vertical-align: middle;">{{ ucwords(strtolower($submission->institution)) }}</td>
                         <td rowspan="{{ $memberCount }}" style="vertical-align: middle;">{{ ucwords(strtolower($submission->study_program ?? '-')) }}</td>
                         <td rowspan="{{ $memberCount }}" style="vertical-align: middle; text-align: center;">{{ $kategori }}</td>
