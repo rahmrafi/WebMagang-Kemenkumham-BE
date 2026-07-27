@@ -7,7 +7,6 @@ use App\Models\Submission;
 use App\Models\SubmissionMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -166,8 +165,7 @@ class SubmissionController extends Controller
             $submission->update(['document_downloaded_at' => now()]);
         }
 
-        $member1Parts = explode('|', $submission->member_1);
-        $namaKetua = $member1Parts[0] ?? 'ketua';
+        $namaKetua = \App\Support\MemberParser::parseName($submission->member_1) ?: 'ketua';
         
         $namaKetuaClean = Str::slug($namaKetua, '_') ?: 'ketua';
         $kampusClean = Str::slug($submission->institution, '_') ?: 'kampus';
@@ -203,10 +201,15 @@ class SubmissionController extends Controller
         $extension = $file->getClientOriginalExtension();
         $path = $file->storeAs('', Str::uuid() . '.' . $extension, 'permits');
 
-        $submission->update([
-            'permit_file_path' => $path,
-            'permit_file_name' => $file->getClientOriginalName(),
-        ]);
+        try {
+            $submission->update([
+                'permit_file_path' => $path,
+                'permit_file_name' => $file->getClientOriginalName(),
+            ]);
+        } catch (\Throwable $e) {
+            Storage::disk('permits')->delete($path); // Cleanup jika DB update gagal
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
@@ -307,7 +310,6 @@ class SubmissionController extends Controller
 
     private function canTrackUnreadMessages(): bool
     {
-        return Schema::hasTable('submission_messages')
-            && Schema::hasColumn('submission_messages', 'admin_read_at');
+        return true;
     }
 }

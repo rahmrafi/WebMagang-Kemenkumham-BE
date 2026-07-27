@@ -11,7 +11,7 @@ class PeriodController extends Controller
 {
     public function index(): JsonResponse
     {
-        $periods = Cache::remember('public_periods', 300, function () {
+        $periods = Cache::remember('public_periods', 3600, function () {
             return InternshipPeriod::where('status', 'active')
                 ->orderBy('start_date', 'asc')
                 ->get()

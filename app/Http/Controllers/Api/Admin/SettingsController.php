@@ -14,7 +14,7 @@ class SettingsController extends Controller
      */
     public function index()
     {
-        $settings = Cache::rememberForever('app_settings', function () {
+        $settings = Cache::remember('app_settings', 21600, function () {
             return Setting::all()->pluck('value', 'key');
         });
         return response()->json([

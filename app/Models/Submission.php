@@ -69,4 +69,14 @@ class Submission extends Model
     {
         return $this->hasOne(SubmissionMessage::class)->latestOfMany();
     }
+
+    public function members(): HasMany
+    {
+        return $this->hasMany(SubmissionMember::class)->orderBy('urutan');
+    }
+
+    public function leader(): HasOne
+    {
+        return $this->hasOne(SubmissionMember::class)->where('is_leader', true);
+    }
 }
