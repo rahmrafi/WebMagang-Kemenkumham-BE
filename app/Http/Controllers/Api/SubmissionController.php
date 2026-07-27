@@ -23,6 +23,8 @@ class SubmissionController extends Controller
             $request->file('document')
         );
 
+        \Illuminate\Support\Facades\Cache::forget('public_periods');
+
         return response()->json([
             'success' => true,
             'message' => 'Permohonan berhasil dikirim.',
