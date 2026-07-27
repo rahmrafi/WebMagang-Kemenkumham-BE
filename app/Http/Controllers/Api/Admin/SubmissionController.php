@@ -92,9 +92,19 @@ class SubmissionController extends Controller
         
         $paginator->setCollection($submissions);
 
+        $stats = [
+            'total'      => \App\Models\Submission::count(),
+            'pending'    => \App\Models\Submission::where('status', 'pending')->count(),
+            'approved'   => \App\Models\Submission::where('status', 'approved')->count(),
+            'rejected'   => \App\Models\Submission::where('status', 'rejected')->count(),
+            'magang'     => \App\Models\Submission::where('type', 'magang')->count(),
+            'penelitian' => \App\Models\Submission::where('type', 'penelitian')->count(),
+        ];
+
         return response()->json([
             'success' => true,
-            'data' => $paginator,
+            'data'    => $paginator,
+            'stats'   => $stats,
         ]);
     }
 
