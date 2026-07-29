@@ -186,7 +186,9 @@ class DocumentService
 
         $xml = str_replace('[jabatan_pejabat]', 'Kepala Bagian Tata Usaha dan Umum', $xml);
         $xml = str_replace('a.n.  Kepala Kantor Wilayah,', 'a.n. Kepala Kantor Wilayah,', $xml);
-        $xml = str_replace('[nama_pejabat]', $e($data['nama_pejabat']), $xml);
+        $xml = $this->replaceFlexible($xml, '[nama_pejabat]', $e($data['nama_pejabat']));
+        $xml = $this->replaceFlexible($xml, 'R. Prasetyo Wibowo', $e($data['nama_pejabat']));
+        $xml = $this->replaceFlexible($xml, 'Meirina Saeksi', $e($data['nama_pejabat']));
 
         $xml = preg_replace(
             '/<w:p\b[^>]*>(?:(?!<\/w:p>).)*\[(?:\.|\x{2026})+9\](?:(?!<\/w:p>).)*<\/w:p>/su',
@@ -218,7 +220,9 @@ class DocumentService
         $xml = $this->replaceNumberedPlaceholder($xml, 9, $e($data['research_title'] ?? ''));
 
         $xml = str_replace('Kepala Bagian Umum dan Tata Usaha', 'Kepala Bagian Tata Usaha dan Umum', $xml);
-        $xml = str_replace('Meirina Saeksi', $e($data['nama_pejabat']), $xml);
+        $xml = $this->replaceFlexible($xml, 'Meirina Saeksi', $e($data['nama_pejabat']));
+        $xml = $this->replaceFlexible($xml, 'R. Prasetyo Wibowo', $e($data['nama_pejabat']));
+        $xml = $this->replaceFlexible($xml, '[nama_pejabat]', $e($data['nama_pejabat']));
 
         return $xml;
     }
@@ -231,6 +235,24 @@ class DocumentService
         $pattern = '/\[' . $t . '(?:' . $dot . $t . ')+' . $number . $t . '\]/su';
 
         return preg_replace_callback($pattern, static fn() => $replacement, $xml);
+    }
+
+    private function replaceFlexible(string $xml, string $search, string $replacement): string
+    {
+        $t = '(?:<[^>]+>)*'; // Only match XML tags, avoid matching excessive whitespace if not needed, but Word puts tags anywhere.
+        
+        $chars = mb_str_split($search);
+        $patternParts = [];
+        foreach ($chars as $char) {
+            if ($char === ' ') {
+                $patternParts[] = '(?:<[^>]+>|\s+)+';
+            } else {
+                $patternParts[] = preg_quote($char, '/');
+            }
+        }
+        $pattern = '/' . implode($t, $patternParts) . '/sui';
+
+        return preg_replace($pattern, $replacement, $xml) ?? $xml;
     }
 
     private function buildMembersTableXml(array $members, string $labelNim): string
