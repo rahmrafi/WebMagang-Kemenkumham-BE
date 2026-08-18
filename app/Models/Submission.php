@@ -43,6 +43,7 @@ class Submission extends Model
         'permit_file_name',
         'certificate_zip_path',
         'certificate_generated_at',
+        'certificate_number_suffixes',
         'rejection_note',
     ];
 
@@ -53,6 +54,7 @@ class Submission extends Model
         'document_downloaded_at' => 'datetime',
         'discussion_started_at' => 'datetime',
         'certificate_generated_at' => 'datetime',
+        'certificate_number_suffixes' => 'array',
     ];
 
     public function period(): BelongsTo

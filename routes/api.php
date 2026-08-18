@@ -62,6 +62,7 @@ Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class, EnsureDesktopOrTabl
 
     // ── Sertifikat ──────────────────────────────────────────────────────────
     Route::get('/certificate/settings', [CertificateController::class, 'getSettings']);
+    Route::post('/certificate/text-settings', [CertificateController::class, 'saveTextSettings']);
     Route::get('/certificate/template/preview', [CertificateController::class, 'previewTemplate']);
     Route::post('/certificate/template', [CertificateController::class, 'uploadTemplate']);
     Route::delete('/certificate/template', [CertificateController::class, 'deleteTemplate']);

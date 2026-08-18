@@ -14,12 +14,16 @@ class CertificateController extends Controller
 {
     public function __construct(private readonly CertificateService $certificateService) {}
 
-    // ── Ambil settings sertifikat (template path + fields) ────────────────────
+    // ── Ambil settings sertifikat (template path + fields + text settings) ──
     public function getSettings(): JsonResponse
     {
-        $templatePath = Setting::where('key', 'certificate_template_path')->value('value');
-        $fieldsRaw    = Setting::where('key', 'certificate_fields')->value('value');
-        $fields       = $fieldsRaw ? json_decode($fieldsRaw, true) : [];
+        $templatePath   = Setting::where('key', 'certificate_template_path')->value('value');
+        $fieldsRaw      = Setting::where('key', 'certificate_fields')->value('value');
+        $fields         = $fieldsRaw ? json_decode($fieldsRaw, true) : [];
+        $prefix         = Setting::where('key', 'certificate_prefix')->value('value') ?? '';
+        $pejabat        = Setting::where('key', 'certificate_pejabat')->value('value') ?? '';
+        $textMagang     = Setting::where('key', 'certificate_text_magang')->value('value') ?? '';
+        $textPenelitian = Setting::where('key', 'certificate_text_penelitian')->value('value') ?? '';
 
         $templateUrl = null;
         if ($templatePath && Storage::disk('public')->exists($templatePath)) {
@@ -28,10 +32,34 @@ class CertificateController extends Controller
 
         return response()->json([
             'data' => [
-                'template_path' => $templatePath,
-                'template_url'  => $templateUrl,
-                'fields'        => $fields,
+                'template_path'   => $templatePath,
+                'template_url'    => $templateUrl,
+                'fields'          => $fields,
+                'prefix'          => $prefix,
+                'pejabat'         => $pejabat,
+                'text_magang'     => $textMagang,
+                'text_penelitian' => $textPenelitian,
             ],
+        ]);
+    }
+
+    // ── Simpan pengaturan teks sertifikat ─────────────────────────────────────
+    public function saveTextSettings(Request $request): JsonResponse
+    {
+        $request->validate([
+            'prefix'          => ['required', 'string'],
+            'pejabat'         => ['required', 'string'],
+            'text_magang'     => ['required', 'string'],
+            'text_penelitian' => ['required', 'string'],
+        ]);
+
+        Setting::updateOrCreate(['key' => 'certificate_prefix'], ['value' => $request->prefix]);
+        Setting::updateOrCreate(['key' => 'certificate_pejabat'], ['value' => $request->pejabat]);
+        Setting::updateOrCreate(['key' => 'certificate_text_magang'], ['value' => $request->text_magang]);
+        Setting::updateOrCreate(['key' => 'certificate_text_penelitian'], ['value' => $request->text_penelitian]);
+
+        return response()->json([
+            'message' => 'Pengaturan teks berhasil disimpan',
         ]);
     }
 
@@ -106,19 +134,19 @@ class CertificateController extends Controller
     public function saveFields(Request $request): JsonResponse
     {
         $request->validate([
-            'fields'              => ['required', 'array'],
-            'fields.*.id'         => ['required', 'string'],
-            'fields.*.label'      => ['required', 'string'],
-            'fields.*.x'          => ['required', 'numeric', 'min:0', 'max:100'],
-            'fields.*.y'          => ['required', 'numeric', 'min:0', 'max:100'],
-            'fields.*.font_size'  => ['required', 'integer', 'min:6', 'max:72'],
-            'fields.*.font_color' => ['sometimes', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'fields.*.width'      => ['sometimes', 'numeric', 'min:5', 'max:100'],
-            'fields.*.text_align' => ['sometimes', 'in:left,center,right'],
-            'fields.*.font_family'  => ['sometimes', 'in:helvetica,times,georgia,montserrat,poppins,playfair,dancing-script,great-vibes'],
-            'fields.*.font_weight'  => ['sometimes', 'integer', 'in:200,300,400,500,600,700,800'],
-            'fields.*.font_style'   => ['sometimes', 'in:normal,italic'],
-            'fields.*.preview_text' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'fields'                 => ['required', 'array'],
+            'fields.*.id'            => ['required', 'string'],
+            'fields.*.label'         => ['required', 'string'],
+            'fields.*.x'             => ['required', 'numeric', 'min:0', 'max:100'],
+            'fields.*.y'             => ['required', 'numeric', 'min:0', 'max:100'],
+            'fields.*.font_size'     => ['required', 'integer', 'min:6', 'max:72'],
+            'fields.*.font_color'    => ['sometimes', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'fields.*.width'         => ['sometimes', 'numeric', 'min:5', 'max:100'],
+            'fields.*.text_align'    => ['sometimes', 'in:left,center,right'],
+            'fields.*.font_family'   => ['sometimes', 'in:helvetica,times,georgia,montserrat,poppins,playfair,dancing-script,great-vibes'],
+            'fields.*.font_weight'   => ['sometimes', 'integer', 'in:200,300,400,500,600,700,800'],
+            'fields.*.font_style'    => ['sometimes', 'in:normal,italic'],
+            'fields.*.preview_text'  => ['sometimes', 'nullable', 'string', 'max:1000'],
             'fields.*.preview_width' => ['sometimes', 'numeric', 'min:200', 'max:5000'],
         ]);
 
@@ -148,13 +176,34 @@ class CertificateController extends Controller
     }
 
     // ── Generate sertifikat (1 PDF per member) → ZIP ─────────────────────────
-    public function generate(Submission $submission): JsonResponse
+    public function generate(Request $request, Submission $submission): JsonResponse
     {
+        $request->validate([
+            'suffixes'   => ['required', 'array'],
+            'suffixes.*' => ['required', 'string'],
+        ]);
+
         if ($submission->status !== 'approved') {
             return response()->json(['message' => 'Submission belum disetujui'], 422);
         }
 
-        $result = $this->certificateService->generateZip($submission);
+        $memberCount = 0;
+        for ($i = 1; $i <= 10; $i++) {
+            if (!empty($submission->{"member_{$i}"})) {
+                $memberCount++;
+            }
+        }
+
+        if (count($request->input('suffixes')) !== $memberCount) {
+            return response()->json([
+                'message' => "Jumlah suffix nomor surat (" . count($request->input('suffixes')) . ") tidak sesuai dengan jumlah anggota ({$memberCount})",
+                'errors'  => [
+                    'suffixes' => ["Jumlah suffix harus sama dengan jumlah anggota ({$memberCount})"],
+                ],
+            ], 422);
+        }
+
+        $result = $this->certificateService->generateZip($submission, $request->input('suffixes'));
 
         // Hapus ZIP lama jika ada
         if ($submission->certificate_zip_path && Storage::disk('public')->exists($submission->certificate_zip_path)) {
@@ -163,8 +212,9 @@ class CertificateController extends Controller
 
         // Simpan path ZIP ke submission
         $submission->update([
-            'certificate_zip_path'     => $result['zipStorePath'],
-            'certificate_generated_at' => now(),
+            'certificate_zip_path'        => $result['zipStorePath'],
+            'certificate_generated_at'    => now(),
+            'certificate_number_suffixes' => $request->input('suffixes'),
         ]);
 
         return response()->json([
