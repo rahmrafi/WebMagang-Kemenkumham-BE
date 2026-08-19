@@ -109,23 +109,33 @@ class CertificateService
         $level        = strtoupper(trim($submission->education_level ?? ''));
 
         $asalInstansiRaw = $institution;
-        if (!empty($studyProgram)) {
-            if ($level === 'SMK') {
-                // Tambahkan kata Jurusan jika belum ada
+
+        if ($level === 'SMK') {
+            // Pastikan ada kata 'SMK' di nama sekolah
+            $inst = (stripos($institution, 'SMK') === false) ? "SMK {$institution}" : $institution;
+            
+            if (!empty($studyProgram)) {
                 $jurusan = (stripos($studyProgram, 'Jurusan') === false) ? "Jurusan {$studyProgram}" : $studyProgram;
-                $asalInstansiRaw = "{$jurusan}, {$institution}";
-            } elseif ($level === 'SMA') {
-                // Jika SMA, user minta hanya nama sekolah saja
-                $asalInstansiRaw = $institution;
+                $asalInstansiRaw = "{$jurusan}, {$inst}";
             } else {
-                // Perkulihan (D3, D4, S1, dll)
-                // Tambahkan kata Program Studi jika belum ada
+                $asalInstansiRaw = $inst;
+            }
+        } elseif ($level === 'SMA') {
+            // Pastikan ada kata 'SMA' di nama sekolah
+            $inst = (stripos($institution, 'SMA') === false) ? "SMA {$institution}" : $institution;
+            $asalInstansiRaw = $inst;
+        } else {
+            // Perkulihan (D3, D4, S1, dll)
+            if (!empty($studyProgram)) {
                 $prodi = (stripos($studyProgram, 'Program Studi') === false && stripos($studyProgram, 'Prodi') === false) 
                     ? "Program Studi {$studyProgram}" 
                     : $studyProgram;
                 $asalInstansiRaw = "{$prodi}, {$institution}";
+            } else {
+                $asalInstansiRaw = $institution;
             }
         }
+        
         $asalInstansiFormatted = str_replace('{instansi}', $asalInstansiRaw, $formatInstansi);
 
         $members     = [];
