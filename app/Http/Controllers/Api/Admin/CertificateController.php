@@ -14,7 +14,8 @@ class CertificateController extends Controller
 {
     public function __construct(private readonly CertificateService $certificateService) {}
 
-    // ── Ambil settings sertifikat (template path + fields + text settings)    public function getSettings(): JsonResponse
+    // ── Ambil settings sertifikat (template path + fields + text settings)
+    public function getSettings(): JsonResponse
     {
         $templatePath   = Setting::where('key', 'certificate_template_path')->value('value');
         $fieldsRaw      = Setting::where('key', 'certificate_fields')->value('value');
