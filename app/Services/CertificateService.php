@@ -104,10 +104,28 @@ class CertificateService
         $formatNim      = Setting::where('key', 'certificate_format_nim')->value('value') ?? 'Nomor Induk Mahasiswa: {nim}';
         $formatInstansi = Setting::where('key', 'certificate_format_instansi')->value('value') ?? 'Asal Instansi: {instansi}';
 
-        $studyProgram   = trim($submission->study_program ?? '');
-        $asalInstansiRaw = !empty($studyProgram)
-            ? "{$studyProgram}, {$submission->institution}"
-            : $submission->institution;
+        $studyProgram = trim($submission->study_program ?? '');
+        $institution  = trim($submission->institution ?? '');
+        $level        = strtoupper(trim($submission->education_level ?? ''));
+
+        $asalInstansiRaw = $institution;
+        if (!empty($studyProgram)) {
+            if ($level === 'SMK') {
+                // Tambahkan kata Jurusan jika belum ada
+                $jurusan = (stripos($studyProgram, 'Jurusan') === false) ? "Jurusan {$studyProgram}" : $studyProgram;
+                $asalInstansiRaw = "{$jurusan}, {$institution}";
+            } elseif ($level === 'SMA') {
+                // Jika SMA, user minta hanya nama sekolah saja
+                $asalInstansiRaw = $institution;
+            } else {
+                // Perkulihan (D3, D4, S1, dll)
+                // Tambahkan kata Program Studi jika belum ada
+                $prodi = (stripos($studyProgram, 'Program Studi') === false && stripos($studyProgram, 'Prodi') === false) 
+                    ? "Program Studi {$studyProgram}" 
+                    : $studyProgram;
+                $asalInstansiRaw = "{$prodi}, {$institution}";
+            }
+        }
         $asalInstansiFormatted = str_replace('{instansi}', $asalInstansiRaw, $formatInstansi);
 
         $members     = [];
