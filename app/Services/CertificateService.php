@@ -101,10 +101,14 @@ class CertificateService
         $periode        = $this->formatPeriode($submission->start_date, $submission->end_date);
         $teksKegiatan   = str_replace('{periode}', $periode, $textTemplate);
 
+        $formatNim      = Setting::where('key', 'certificate_format_nim')->value('value') ?? 'Nomor Induk Mahasiswa: {nim}';
+        $formatInstansi = Setting::where('key', 'certificate_format_instansi')->value('value') ?? 'Asal Instansi: {instansi}';
+
         $studyProgram   = trim($submission->study_program ?? '');
-        $asalInstansi   = !empty($studyProgram)
+        $asalInstansiRaw = !empty($studyProgram)
             ? "{$studyProgram}, {$submission->institution}"
             : $submission->institution;
+        $asalInstansiFormatted = str_replace('{instansi}', $asalInstansiRaw, $formatInstansi);
 
         $members     = [];
         $memberIndex = 0;
@@ -114,11 +118,12 @@ class CertificateService
 
             $suffix          = $suffixes[$memberIndex] ?? '';
             $nomorSertifikat = $prefix . $suffix;
+            $nimFormatted    = str_replace('{nim}', $parsed['nim'], $formatNim);
 
             $members[] = [
                 'nama'             => $parsed['nama'],
-                'nim'              => $parsed['nim'],
-                'asal_instansi'    => $asalInstansi,
+                'nim'              => $nimFormatted,
+                'asal_instansi'    => $asalInstansiFormatted,
                 'teks_kegiatan'    => $teksKegiatan,
                 'nomor_sertifikat' => $nomorSertifikat,
                 'nama_pejabat'     => $pejabat,

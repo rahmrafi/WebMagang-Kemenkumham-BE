@@ -14,8 +14,7 @@ class CertificateController extends Controller
 {
     public function __construct(private readonly CertificateService $certificateService) {}
 
-    // ── Ambil settings sertifikat (template path + fields + text settings) ──
-    public function getSettings(): JsonResponse
+    // ── Ambil settings sertifikat (template path + fields + text settings)    public function getSettings(): JsonResponse
     {
         $templatePath   = Setting::where('key', 'certificate_template_path')->value('value');
         $fieldsRaw      = Setting::where('key', 'certificate_fields')->value('value');
@@ -24,6 +23,8 @@ class CertificateController extends Controller
         $pejabat        = Setting::where('key', 'certificate_pejabat')->value('value') ?? '';
         $textMagang     = Setting::where('key', 'certificate_text_magang')->value('value') ?? '';
         $textPenelitian = Setting::where('key', 'certificate_text_penelitian')->value('value') ?? '';
+        $formatNim      = Setting::where('key', 'certificate_format_nim')->value('value') ?? 'Nomor Induk Mahasiswa: {nim}';
+        $formatInstansi = Setting::where('key', 'certificate_format_instansi')->value('value') ?? 'Asal Instansi: {instansi}';
 
         $templateUrl = null;
         if ($templatePath && Storage::disk('public')->exists($templatePath)) {
@@ -39,7 +40,9 @@ class CertificateController extends Controller
                 'pejabat'         => $pejabat,
                 'text_magang'     => $textMagang,
                 'text_penelitian' => $textPenelitian,
-            ],
+                'format_nim'      => $formatNim,
+                'format_instansi' => $formatInstansi,
+            ]
         ]);
     }
 
@@ -51,12 +54,16 @@ class CertificateController extends Controller
             'pejabat'         => ['required', 'string'],
             'text_magang'     => ['required', 'string'],
             'text_penelitian' => ['required', 'string'],
+            'format_nim'      => ['sometimes', 'string', 'nullable'],
+            'format_instansi' => ['sometimes', 'string', 'nullable'],
         ]);
 
         Setting::updateOrCreate(['key' => 'certificate_prefix'], ['value' => $request->prefix]);
         Setting::updateOrCreate(['key' => 'certificate_pejabat'], ['value' => $request->pejabat]);
         Setting::updateOrCreate(['key' => 'certificate_text_magang'], ['value' => $request->text_magang]);
         Setting::updateOrCreate(['key' => 'certificate_text_penelitian'], ['value' => $request->text_penelitian]);
+        Setting::updateOrCreate(['key' => 'certificate_format_nim'], ['value' => $request->format_nim ?? 'Nomor Induk Mahasiswa: {nim}']);
+        Setting::updateOrCreate(['key' => 'certificate_format_instansi'], ['value' => $request->format_instansi ?? 'Asal Instansi: {instansi}']);
 
         return response()->json([
             'message' => 'Pengaturan teks berhasil disimpan',
