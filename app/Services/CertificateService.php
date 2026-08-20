@@ -156,7 +156,7 @@ class CertificateService
                 'nomor_sertifikat' => $nomorSertifikat,
                 'nama_pejabat'     => $pejabat,
                 'periode'          => $periode,
-                'tanggal_terbit'   => now()->locale('id')->isoFormat('D MMMM YYYY'),
+                'tanggal_terbit'   => 'Surabaya, ' . now()->locale('id')->isoFormat('D MMMM YYYY'),
             ];
 
             $memberIndex++;
