@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\CertificateController;
 use App\Http\Controllers\Api\Admin\DocumentController;
 use App\Http\Controllers\Api\Admin\PeriodController as AdminPeriodController;
 use App\Http\Controllers\Api\Admin\SubmissionController as AdminSubmissionController;
+use App\Http\Controllers\Api\Admin\TutorialController;
 use App\Http\Controllers\Api\PeriodController;
 use App\Http\Controllers\Api\SubmissionController;
 use App\Http\Middleware\EnsureDesktopOrTablet;
@@ -69,4 +70,9 @@ Route::middleware(['auth:sanctum', EnsureUserIsAdmin::class, EnsureDesktopOrTabl
     Route::post('/certificate/fields', [CertificateController::class, 'saveFields']);
     Route::post('/submissions/{submission}/certificate', [CertificateController::class, 'generate']);
     Route::get('/submissions/{submission}/certificate/download', [CertificateController::class, 'download']);
+
+    // ── Tutorial ────────────────────────────────────────────────────────────
+    Route::get('/tutorials', [TutorialController::class, 'index']);
+    Route::post('/tutorials', [TutorialController::class, 'store']);
+    Route::delete('/tutorials/{tutorial}', [TutorialController::class, 'destroy']);
 });
